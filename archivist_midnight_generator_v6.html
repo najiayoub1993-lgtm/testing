@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Archivist Midnight — Content Engine v6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blood: #8B1A1A;
+  --blood-bright: #C0392B;
+  --blood-dim: rgba(139,26,26,0.15);
+  --gold: #C9A84C;
+  --gold-dim: rgba(201,168,76,0.12);
+  --ash: #E8E0D4;
+  --ash-dim: #9A9189;
+  --dark: #080808;
+  --dark2: #0C0C0C;
+  --dark3: #111111;
+  --dark4: #181818;
+  --dark5: #202020;
+  --border: rgba(139,26,26,0.25);
+  --border-dim: rgba(255,255,255,0.06);
+  --green: #2ECC71;
+  --green-dim: rgba(46,204,113,0.1);
+  --mono: 'Share Tech Mono', monospace;
+  --display: 'Bebas Neue', sans-serif;
+  --body: 'Crimson Pro', serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--dark);
+  color: var(--ash);
+  font-family: var(--body);
+  font-size: 17px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scanline texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── HEADER ── */
+.hdr {
+  background: var(--dark2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  height: 52px;
+}
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-mark {
+  width: 32px; height: 32px;
+  background: var(--blood);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display);
+  font-size: 18px;
+  color: #fff;
+  letter-spacing: .05em;
+  flex-shrink: 0;
+}
+.logo-text { font-family: var(--display); font-size: 20px; letter-spacing: .12em; color: var(--ash); line-height: 1; }
+.logo-sub { font-family: var(--mono); font-size: 8px; color: var(--ash-dim); letter-spacing: .15em; margin-top: 2px; }
+.hdr-right { display: flex; align-items: center; gap: 10px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+.status-txt { font-family: var(--mono); font-size: 9px; color: var(--ash-dim); letter-spacing: .12em; }
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  background: var(--dark2);
+  border-bottom: 1px solid var(--border-dim);
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: sticky;
+  top: 52px;
+  z-index: 100;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  padding: 11px 16px;
+  cursor: pointer;
+  color: var(--ash-dim);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all .18s;
+  flex-shrink: 0;
+}
+.tab.act { color: var(--blood-bright); border-color: var(--blood-bright); }
+.tab:hover:not(.act) { color: var(--ash); }
+
+/* ── PAGES ── */
+.pg { display: none; padding: 18px 16px 100px; max-width: 880px; margin: 0 auto; }
+.pg.act { display: block; }
+
+/* ── SECTION LABEL ── */
+.sec {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ash-dim);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sec::after { content: ''; flex: 1; height: 1px; background: var(--border-dim); }
+
+/* ── CARDS ── */
+.card {
+  background: var(--dark3);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.card-head {
+  background: rgba(139,26,26,0.18);
+  border-bottom: 1px solid var(--border);
+  padding: 9px 16px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--blood-bright);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-body { padding: 16px; }
+
+/* ── API KEY BOX ── */
+.api-box {
+  background: linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(139,26,26,0.08) 100%);
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.api-flex { display: flex; gap: 8px; align-items: center; }
+.api-saved { font-family: var(--mono); font-size: 9px; color: var(--green); margin-top: 6px; display: none; }
+.api-saved.show { display: block; }
+
+/* ── FORM ELEMENTS ── */
+.fld { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.lbl { font-family: var(--mono); font-size: 9px; color: var(--ash-dim); letter-spacing: .15em; text-transform: uppercase; }
+select, input, textarea {
+  background: var(--dark4);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  color: var(--ash);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 9px 11px;
+  outline: none;
+  width: 100%;
+  transition: border-color .18s;
+  -webkit-appearance: none;
+}
+select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239A9189'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; }
+select:focus, input:focus, textarea:focus { border-color: var(--blood-bright); box-shadow: 0 0 0 2px rgba(192,57,43,0.18); }
+textarea { resize: vertical; min-height: 72px; line-height: 1.6; font-family: var(--body); font-size: 14px; }
+input[type=password] { letter-spacing: .08em; }
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media(max-width:520px) { .g2, .g3 { grid-template-columns: 1fr; } }
+
+/* ── STORY PICKER ── */
+.story-list {
+  background: var(--dark4);
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  max-height: 230px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.story-list::-webkit-scrollbar { width: 4px; }
+.story-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.s-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 11px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: background .12s;
+}
+.s-item:last-child { border-bottom: none; }
+.s-item:hover { background: rgba(255,255,255,0.03); }
+.s-item.selected { background: rgba(139,26,26,0.12); border-left: 2px solid var(--blood-bright); }
+.s-num { font-family: var(--mono); font-size: 9px; color: var(--ash-dim); min-width: 20px; padding-top: 2px; flex-shrink: 0; }
+.s-title { font-size: 12px; color: var(--ash); flex: 1; line-height: 1.45; font-family: var(--mono); }
+.s-pw {
+  font-family: var(--mono); font-size: 9px; color: var(--gold);
+  border: 1px solid rgba(201,168,76,0.3); border-radius: 2px;
+  padding: 1px 6px; white-space: nowrap; flex-shrink: 0; margin-top: 1px;
+}
+.s-actions { display: flex; gap: 6px; margin-bottom: 8px; }
+.sa { font-family: var(--mono); font-size: 9px; color: var(--ash-dim); background: transparent; border: 1px solid var(--border-dim); border-radius: 3px; padding: 4px 10px; cursor: pointer; transition: all .15s; }
+.sa:hover { color: var(--ash); border-color: var(--ash-dim); }
+
+/* ── TOGGLES ── */
+.tg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+@media(max-width:400px) { .tg-grid { grid-template-columns: 1fr; } }
+.tog {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: var(--mono); font-size: 10px;
+  color: var(--ash-dim);
+  transition: all .15s;
+  user-select: none;
+}
+.tog input { display: none; }
+.tog.on { border-color: rgba(192,57,43,0.5); background: rgba(139,26,26,0.12); color: var(--ash); }
+.tg-dot { width: 8px; height: 8px; border: 1px solid currentColor; border-radius: 50%; flex-shrink: 0; transition: background .15s; }
+.tog.on .tg-dot { background: var(--blood-bright); border-color: var(--blood-bright); }
+
+/* ── BUTTONS ── */
+.btn-gen {
+  width: 100%;
+  padding: 15px;
+  background: var(--blood);
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+  font-family: var(--display);
+  font-size: 18px;
+  letter-spacing: .25em;
+  cursor: pointer;
+  transition: all .18s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-gen::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent); transform: translateX(-100%); transition: transform .4s; }
+.btn-gen:hover { background: var(--blood-bright); }
+.btn-gen:hover::after { transform: translateX(100%); }
+.btn-gen:active { transform: scale(.99); }
+.btn-gen:disabled { background: #2a0808; color: rgba(255,255,255,0.3); cursor: not-allowed; transform: none; }
+
+.btn-cont {
+  width: 100%;
+  padding: 11px;
+  background: transparent;
+  border: 1px solid var(--gold);
+  border-radius: 3px;
+  color: var(--gold);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+  margin-top: 8px;
+  display: none;
+}
+.btn-cont.show { display: block; }
+.btn-cont:hover { background: var(--gold-dim); }
+
+.btn-sm {
+  font-family: var(--mono); font-size: 9px;
+  color: var(--ash-dim); background: transparent;
+  border: 1px solid var(--border-dim); border-radius: 3px;
+  padding: 4px 10px; cursor: pointer; transition: all .15s;
+  letter-spacing: .1em;
+}
+.btn-sm:hover { border-color: var(--gold); color: var(--gold); }
+.btn-sm.copied { border-color: var(--green); color: var(--green); }
+.btn-outline {
+  width: 100%; padding: 10px;
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 3px; color: var(--ash);
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: .15em; text-transform: uppercase;
+  cursor: pointer; transition: all .15s; margin-top: 6px;
+}
+.btn-outline:hover { background: var(--dark4); }
+
+/* ── PROGRESS ── */
+.prog-wrap { margin-top: 12px; display: none; }
+.prog-wrap.show { display: block; }
+.prog-bar { height: 2px; background: var(--dark5); border-radius: 1px; overflow: hidden; }
+.prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--blood), var(--blood-bright), var(--gold), var(--blood-bright), var(--blood));
+  background-size: 400% 100%;
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+.prog-msg { font-family: var(--mono); font-size: 10px; color: var(--gold); margin-top: 7px; letter-spacing: .07em; }
+.prog-step {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;
+}
+.ps-item {
+  font-family: var(--mono); font-size: 9px;
+  padding: 3px 8px; border-radius: 2px;
+  border: 1px solid var(--border-dim);
+  color: var(--ash-dim); transition: all .3s;
+}
+.ps-item.active { border-color: var(--gold); color: var(--gold); }
+.ps-item.done { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+
+/* ── ERROR ── */
+.err { background: rgba(192,57,43,0.1); border: 1px solid var(--blood-bright); border-radius: 3px; padding: 12px; font-family: var(--mono); font-size: 10px; color: var(--blood-bright); margin-top: 10px; display: none; line-height: 1.6; }
+.err.show { display: block; }
+
+/* ── OUTPUTS ── */
+.out-block { background: var(--dark3); border: 1px solid var(--border-dim); border-radius: 4px; overflow: hidden; margin-bottom: 12px; display: none; }
+.out-block.show { display: block; animation: fadeup .35s ease; }
+@keyframes fadeup { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.out-head {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-dim);
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255,255,255,0.02);
+}
+.out-label {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--gold);
+  display: flex; align-items: center; gap: 6px;
+}
+.out-label::before { content: '▶'; font-size: 7px; color: var(--blood-bright); }
+.out-body {
+  padding: 18px;
+  font-family: var(--body); font-size: 16px;
+  line-height: 1.9; color: var(--ash);
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 600px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.out-body::-webkit-scrollbar { width: 4px; }
+.out-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.out-body.mono { font-family: var(--mono); font-size: 11px; line-height: 1.75; color: #9fc49f; }
+.out-body.script-style { font-size: 15px; }
+
+/* Script section highlights */
+.out-body.script-style .hook-mark { color: var(--blood-bright); }
+
+/* ── META STRIP ── */
+.meta { background: var(--dark4); border: 1px solid var(--border-dim); border-radius: 3px; padding: 12px; margin-bottom: 14px; display: none; font-family: var(--mono); font-size: 10px; }
+.meta.show { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 10px; }
+.mk { font-size: 8px; color: var(--ash-dim); text-transform: uppercase; letter-spacing: .15em; margin-bottom: 2px; }
+.mv { color: var(--ash); }
+
+/* ── PIPELINE ── */
+.pl-step {
+  display: flex; gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border-dim);
+  align-items: flex-start;
+}
+.pl-step:last-child { border-bottom: none; }
+.pl-num { font-family: var(--mono); font-size: 11px; color: var(--blood-bright); min-width: 22px; padding-top: 2px; }
+.pl-title { font-weight: 600; font-size: 14px; margin-bottom: 3px; }
+.pl-desc { font-size: 13px; color: var(--ash-dim); line-height: 1.6; }
+.pl-tool { display: inline-block; font-family: var(--mono); font-size: 9px; color: var(--gold); border: 1px solid rgba(201,168,76,0.3); border-radius: 2px; padding: 2px 7px; margin-top: 5px; }
+
+/* ── SCHEDULE ── */
+.sg { display: grid; grid-template-columns: repeat(6,1fr); gap: 5px; margin-bottom: 14px; }
+.sd { border-radius: 3px; padding: 8px 4px; text-align: center; font-family: var(--mono); font-size: 9px; border: 1px solid var(--border-dim); }
+.sdn { font-size: 11px; font-weight: 600; margin-bottom: 3px; }
+.sn { background: rgba(10,10,30,0.8); border-color: rgba(60,60,120,0.4); color: #8080c0; }
+.so { background: var(--green-dim); border-color: rgba(46,204,113,0.25); color: #4ec97c; }
+.sm { background: var(--gold-dim); border-color: rgba(201,168,76,0.25); color: var(--gold); }
+.sb { border-radius: 3px; padding: 12px; margin-bottom: 8px; border: 1px solid var(--border-dim); }
+.sbt { font-family: var(--mono); font-size: 9px; font-weight: 600; margin-bottom: 8px; }
+.sk { font-size: 13px; color: var(--ash-dim); padding: 3px 0; display: flex; gap: 8px; line-height: 1.6; }
+.sk::before { content: "→"; color: rgba(255,255,255,0.2); flex-shrink: 0; }
+
+/* ── CHECKLIST ── */
+.ci { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border-dim); font-size: 14px; }
+.ci:last-child { border-bottom: none; }
+.cb2 { width: 17px; height: 17px; border-radius: 3px; border: 1px solid var(--border-dim); cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; transition: all .15s; margin-top: 2px; }
+.cb2.done { background: var(--green); border-color: var(--green); color: #000; }
+.ccat { font-family: var(--mono); font-size: 9px; padding: 1px 6px; border-radius: 2px; border: 1px solid; flex-shrink: 0; margin-top: 3px; }
+.cat-p { border-color: rgba(192,57,43,.35); color: var(--blood-bright); }
+.cat-t { border-color: rgba(201,168,76,.35); color: var(--gold); }
+.cat-l { border-color: rgba(201,168,76,.35); color: var(--gold); }
+.cat-s { border-color: rgba(46,204,113,.35); color: #4ec97c; }
+.cat-e { border-color: rgba(46,204,113,.35); color: #4ec97c; }
+.cprog { height: 3px; background: var(--dark5); border-radius: 2px; overflow: hidden; margin-top: 10px; }
+.cpf { height: 100%; background: var(--green); transition: width .3s; }
+
+/* ── YEAR GRID ── */
+.yg { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px,1fr)); gap: 8px; }
+.ym { background: var(--dark4); border: 1px solid var(--border-dim); border-radius: 3px; padding: 11px; transition: border-color .15s; }
+.ym:hover { border-color: var(--border); }
+.yn { font-family: var(--display); font-size: 16px; letter-spacing: .06em; margin-bottom: 4px; color: var(--ash); }
+.yw { font-family: var(--mono); font-size: 9px; color: var(--blood-bright); margin-bottom: 4px; letter-spacing: .07em; }
+.yd { font-size: 12px; color: var(--ash-dim); line-height: 1.5; }
+
+/* ── INFO BOXES ── */
+.info-box { background: var(--green-dim); border: 1px solid rgba(46,204,113,0.2); border-radius: 3px; padding: 10px 14px; font-family: var(--mono); font-size: 10px; color: #4ec97c; margin-bottom: 14px; line-height: 1.7; }
+.warn-box { background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.2); border-radius: 3px; padding: 10px 14px; font-family: var(--mono); font-size: 10px; color: var(--gold); margin-bottom: 14px; line-height: 1.7; }
+
+/* ── COWORK STEPS ── */
+.cws { background: var(--dark4); border: 1px solid var(--border-dim); border-radius: 3px; padding: 12px 14px; margin-bottom: 8px; display: flex; gap: 12px; }
+.cwsn { font-family: var(--mono); font-size: 12px; color: var(--blood-bright); min-width: 22px; padding-top: 1px; }
+.cwst { font-weight: 600; font-size: 14px; margin-bottom: 3px; }
+.cwsd { font-size: 13px; color: var(--ash-dim); line-height: 1.6; }
+.cwstag { display: inline-block; font-family: var(--mono); font-size: 9px; color: var(--gold); border: 1px solid rgba(201,168,76,0.25); border-radius: 2px; padding: 2px 7px; margin-top: 5px; }
+
+/* ── 156 FILES ── */
+.file-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer; transition: background .1s;
+}
+.file-row:last-child { border-bottom: none; }
+.file-row:hover { background: rgba(255,255,255,0.02); }
+.fn { font-family: var(--mono); font-size: 9px; color: var(--ash-dim); min-width: 26px; padding-top: 2px; flex-shrink: 0; }
+.ft { font-family: var(--mono); font-size: 11px; color: var(--ash); flex: 1; line-height: 1.5; }
+.fpw { font-family: var(--mono); font-size: 9px; color: var(--gold); border: 1px solid rgba(201,168,76,0.22); border-radius: 2px; padding: 1px 6px; white-space: nowrap; flex-shrink: 0; }
+.load-btn { font-family: var(--mono); font-size: 9px; color: var(--blood-bright); border: 1px solid rgba(192,57,43,0.3); border-radius: 2px; padding: 1px 7px; white-space: nowrap; flex-shrink: 0; transition: all .12s; }
+.file-row:hover .load-btn { background: rgba(139,26,26,0.2); }
+
+/* ── BOTTOM NAV ── */
+.bnav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--dark2);
+  border-top: 1px solid var(--border-dim);
+  display: flex; z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.bb { flex: 1; padding: 9px 3px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; font-family: var(--mono); font-size: 8px; color: var(--ash-dim); transition: color .15s; background: none; border: none; letter-spacing: .04em; }
+.bb.act { color: var(--blood-bright); }
+.bi { font-size: 16px; line-height: 1; }
+
+/* ── TASK CARDS (sequential reveal) ── */
+.task-card {
+  background: var(--dark3);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  display: none;
+  animation: fadeup .35s ease;
+}
+.task-card.show { display: block; }
+.task-head {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-dim);
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255,255,255,0.02);
+}
+.task-phase {
+  font-family: var(--mono); font-size: 8px;
+  letter-spacing: .2em; text-transform: uppercase;
+  color: var(--ash-dim); margin-bottom: 2px;
+}
+.task-title-label {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: .14em; text-transform: uppercase;
+  color: var(--gold);
+  display: flex; align-items: center; gap: 7px;
+}
+.task-title-label .t-icon { font-size: 13px; }
+.task-status {
+  font-family: var(--mono); font-size: 9px;
+  padding: 3px 9px; border-radius: 2px;
+  border: 1px solid;
+  display: flex; align-items: center; gap: 5px;
+}
+.task-status.running { border-color: var(--gold); color: var(--gold); }
+.task-status.done { border-color: var(--green); color: var(--green); }
+.task-status .spin {
+  width: 7px; height: 7px; border-radius: 50%;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  animation: spin .7s linear infinite;
+  display: none;
+}
+.task-status.running .spin { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.task-body {
+  padding: 16px 18px;
+  font-family: var(--body); font-size: 15px;
+  line-height: 1.85; color: var(--ash);
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 520px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.task-body::-webkit-scrollbar { width: 4px; }
+.task-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.task-body.mono-body { font-family: var(--mono); font-size: 11px; line-height: 1.75; color: #9fc49f; }
+.task-foot {
+  padding: 9px 16px; border-top: 1px solid var(--border-dim);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 6px;
+  background: rgba(0,0,0,0.15);
+}
+.task-meta { font-family: var(--mono); font-size: 9px; color: var(--ash-dim); }
+.task-meta span { color: var(--gold); margin-left: 4px; }
+
+/* ── ANALYSIS BLOCK ── */
+.analysis-block {
+  background: var(--dark2);
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  display: none;
+  animation: fadeup .5s ease;
+}
+.analysis-block.show { display: block; }
+.analysis-head {
+  background: linear-gradient(135deg, rgba(201,168,76,0.18) 0%, rgba(139,26,26,0.18) 100%);
+  border-bottom: 1px solid rgba(201,168,76,0.3);
+  padding: 12px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.analysis-title {
+  font-family: var(--display); font-size: 18px;
+  letter-spacing: .12em; color: var(--gold);
+  display: flex; align-items: center; gap: 10px;
+}
+.analysis-body { padding: 18px; }
+
+/* Score cards */
+.score-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px; margin-bottom: 18px;
+}
+.score-card {
+  background: var(--dark4);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  padding: 12px;
+  text-align: center;
+  transition: border-color .2s;
+}
+.score-card.top { border-color: var(--gold); }
+.score-label { font-family: var(--mono); font-size: 9px; color: var(--ash-dim); letter-spacing: .12em; margin-bottom: 6px; text-transform: uppercase; }
+.score-num { font-family: var(--display); font-size: 28px; letter-spacing: .05em; line-height: 1; margin-bottom: 4px; }
+.score-num.s-great { color: var(--green); }
+.score-num.s-good { color: var(--gold); }
+.score-num.s-ok { color: #e67e22; }
+.score-num.s-low { color: var(--blood-bright); }
+.score-verdict { font-family: var(--mono); font-size: 9px; color: var(--ash-dim); }
+
+/* Analysis sections */
+.a-section { margin-bottom: 16px; }
+.a-section-title {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--blood-bright);
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.a-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-dim); }
+.a-highlight {
+  background: rgba(201,168,76,0.08);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-left: 3px solid var(--gold);
+  border-radius: 0 3px 3px 0;
+  padding: 10px 14px;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--ash); line-height: 1.7;
+  margin-bottom: 8px;
+}
+.a-fix {
+  background: rgba(139,26,26,0.08);
+  border: 1px solid rgba(139,26,26,0.2);
+  border-left: 3px solid var(--blood-bright);
+  border-radius: 0 3px 3px 0;
+  padding: 10px 14px;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--ash); line-height: 1.7;
+  margin-bottom: 8px;
+}
+.a-verdict {
+  background: linear-gradient(135deg, rgba(46,204,113,0.08) 0%, rgba(201,168,76,0.08) 100%);
+  border: 1px solid rgba(46,204,113,0.25);
+  border-radius: 3px;
+  padding: 14px 16px;
+  font-family: var(--body); font-size: 15px;
+  line-height: 1.7; color: var(--ash);
+}
+.a-verdict-label {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: .15em; color: var(--green);
+  margin-bottom: 6px; text-transform: uppercase;
+}
+.overall-badge {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: rgba(201,168,76,0.1);
+  border: 1px solid var(--gold);
+  border-radius: 3px;
+  padding: 8px 16px;
+  font-family: var(--display); font-size: 22px;
+  letter-spacing: .1em; color: var(--gold);
+  margin-bottom: 14px;
+}
+.elev-badge {
+  font-family: var(--mono); font-size: 9px;
+  padding: 2px 8px; border-radius: 2px; border: 1px solid;
+  margin-right: 4px; margin-bottom: 4px; display: inline-block;
+}
+.elev-y { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+.elev-n { border-color: var(--blood-bright); color: var(--blood-bright); background: rgba(139,26,26,0.1); }
+.elev-w { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="logo">
+    <div class="logo-mark">AM</div>
+    <div>
+      <div class="logo-text">Archivist Midnight</div>
+      <div class="logo-sub">Content Engine v6 · OMNIA VERITAS IN TENEBRIS</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="status-dot"></div>
+    <span class="status-txt" id="stsTxt">READY</span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs" id="tabBar">
+  <div class="tab act" onclick="gp('gen',this)">⚡ Generator</div>
+  <div class="tab" onclick="gp('files',this)">📁 156 Files</div>
+  <div class="tab" onclick="gp('pipeline',this)">🔄 Pipeline</div>
+  <div class="tab" onclick="gp('schedule',this)">📅 Schedule</div>
+  <div class="tab" onclick="gp('year',this)">📆 Year Plan</div>
+  <div class="tab" onclick="gp('checklist',this)">✅ Pre-Upload</div>
+  <div class="tab" onclick="gp('cowork',this)">🖥 Cowork</div>
+  <div class="tab" onclick="gp('settings',this)">⚙ Settings</div>
+</div>
+
+<!-- ══════════ GENERATOR ══════════ -->
+<div class="pg act" id="pg-gen">
+
+  <div class="api-box">
+    <div class="sec">Anthropic API Key</div>
+    <div class="api-flex">
+      <input type="password" id="apiKey" placeholder="sk-ant-api03-..." style="flex:1;" oninput="saveKey()">
+      <button class="btn-sm" onclick="toggleKey()" style="white-space:nowrap;">SHOW/HIDE</button>
+    </div>
+    <div class="api-saved" id="keySaved">✓ KEY SAVED — READY TO GENERATE</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--ash-dim);margin-top:5px;">Get your key at console.anthropic.com → API Keys. Stored locally on your device only.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">▌ CASE FILE PARAMETERS</div>
+    <div class="card-body">
+      <div class="g2">
+        <div class="fld">
+          <label class="lbl">Content Wing</label>
+          <select id="wing" onchange="loadWingStories()">
+            <option value="1">Wing 1 — Forensic True Crime</option>
+            <option value="2">Wing 2 — Paranormal Cold Cases</option>
+            <option value="3">Wing 3 — Analog Horror</option>
+            <option value="4">Wing 4 — Deep-Woods Mysteries</option>
+            <option value="5">Wing 5 — Night Shift Horror</option>
+            <option value="6">Wing 6 — Middle East Folklore</option>
+            <option value="7">Wing 7 — Cursed Objects</option>
+            <option value="8">Wing 8 — Psychological Unraveling</option>
+            <option value="9">Wing 9 — Liminal Spaces</option>
+            <option value="10">Wing 10 — Government Cover-Ups</option>
+            <option value="11">Wing 11 — Sleep Compendiums</option>
+            <option value="12">Wing 12 — Rituals & Occult</option>
+            <option value="13">Wing 13 — Sentient AI Horror</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label class="lbl">Reality Classification</label>
+          <select id="reality">
+            <option value="Semi-Real">Semi-Real (folklore + accounts)</option>
+            <option value="Real">Real (documented events)</option>
+            <option value="Fictional">Fictional (original horror)</option>
+            <option value="Mixed">Mixed blend</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="fld">
+        <label class="lbl">Story Title — select from your 156 files or leave blank for AI to choose</label>
+        <div class="s-actions">
+          <button class="sa" onclick="pickRand()">RANDOM PICK</button>
+          <button class="sa" onclick="clearPick()">CLEAR</button>
+        </div>
+        <div class="story-list" id="storyList"></div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--ash-dim);margin-top:5px;" id="selectedLabel">No story selected — AI will choose the best idea for this wing</div>
+      </div>
+
+      <div class="g3">
+        <div class="fld">
+          <label class="lbl">Video Format</label>
+          <select id="format">
+            <option value="Case Report (10-15 min)">Case Report 10–15 min</option>
+            <option value="Deep Dive (20-30 min)">Deep Dive 20–30 min</option>
+            <option value="Sleep Compendium (2-4 hrs)">Sleep Compendium 2–4 hrs</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label class="lbl">Tone</label>
+          <select id="tone">
+            <option value="slow-burn atmospheric dread, calm and understated narration">Slow-burn atmospheric</option>
+            <option value="fast-paced and viscerally shocking">Fast-paced shocking</option>
+            <option value="investigative documentary forensic authority">Documentary forensic</option>
+            <option value="deep psychological paranoia and unreliable reality">Psychological paranoia</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label class="lbl">Script Length</label>
+          <select id="scriptLen">
+            <option value="standard (8,000-10,000 characters per story)">Standard 8K–10K chars</option>
+            <option value="extended (12,000-15,000 characters per story)">Extended 12K–15K chars</option>
+            <option value="maximum (full cinematic, 15,000+ characters per story)">Maximum 15K+ chars</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="fld">
+        <label class="lbl">Extra Instructions (optional)</label>
+        <textarea id="extra" placeholder="e.g. Set in Dubai at 2am on the airport road. The witness is a delivery driver. She smells oud perfume first. End completely unresolved — no explanation given."></textarea>
+      </div>
+
+      <div class="div"></div>
+      <div class="sec">What to generate</div>
+
+      <div class="tg-grid">
+        <label class="tog on" id="tg-titles"><input type="checkbox" checked onchange="tc(this,'tg-titles')"><span class="tg-dot"></span>5 SEO Title Options</label>
+        <label class="tog on" id="tg-script"><input type="checkbox" checked onchange="tc(this,'tg-script')"><span class="tg-dot"></span>Full Script (ElevenLabs ready)</label>
+        <label class="tog on" id="tg-images"><input type="checkbox" checked onchange="tc(this,'tg-images')"><span class="tg-dot"></span>20 Image Prompts (Ideogram)</label>
+        <label class="tog on" id="tg-thumbs"><input type="checkbox" checked onchange="tc(this,'tg-thumbs')"><span class="tg-dot"></span>3 Thumbnail Concepts</label>
+        <label class="tog on" id="tg-seo"><input type="checkbox" checked onchange="tc(this,'tg-seo')"><span class="tg-dot"></span>SEO + Tags + Description</label>
+        <label class="tog on" id="tg-capcut"><input type="checkbox" checked onchange="tc(this,'tg-capcut')"><span class="tg-dot"></span>CapCut Edit Guide</label>
+      </div>
+
+      <button class="btn-gen" id="genBtn" onclick="generate()">▌ GENERATE COMPLETE VIDEO PACKAGE</button>
+
+      <div class="prog-wrap" id="progWrap">
+        <div class="prog-bar"><div class="prog-fill"></div></div>
+        <div class="prog-msg" id="progMsg">Accessing the archive...</div>
+        <div class="prog-step" id="progSteps"></div>
+      </div>
+      <div class="err" id="errBox"></div>
+    </div>
+  </div>
+
+  <div class="meta" id="metaStrip"></div>
+
+  <!-- PHASE 1 — TITLES -->
+  <div class="task-card" id="tc-titles">
+    <div class="task-head">
+      <div>
+        <div class="task-phase">Phase 01</div>
+        <div class="task-title-label"><span class="t-icon">🎯</span>Title Options — 5 SEO Titles</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="task-status running" id="ts-titles"><div class="spin"></div><span>Generating...</span></div>
+        <button class="btn-sm" onclick="cpBlock('tb-titles',this)">COPY</button>
+      </div>
+    </div>
+    <div class="task-body" id="tb-titles"></div>
+    <div class="task-foot">
+      <div class="task-meta">Best title auto-selected for script<span id="tm-titles"></span></div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 — SCRIPT -->
+  <div class="task-card" id="tc-script">
+    <div class="task-head">
+      <div>
+        <div class="task-phase">Phase 02</div>
+        <div class="task-title-label"><span class="t-icon">📜</span>Full Horror Script — ElevenLabs Ready</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="task-status running" id="ts-script"><div class="spin"></div><span>Writing...</span></div>
+        <button class="btn-sm" onclick="cpBlock('tb-script',this)">COPY</button>
+      </div>
+    </div>
+    <div class="task-body" id="tb-script"></div>
+    <div class="task-foot">
+      <div class="task-meta" id="tm-script"></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--gold);" id="scriptStatus2"></div>
+    </div>
+  </div>
+  <button class="btn-cont" id="contBtn" onclick="continueScript()">▶ GET NEXT PART — CONTINUE SCRIPT</button>
+
+  <!-- PHASE 3 — IMAGES -->
+  <div class="task-card" id="tc-images">
+    <div class="task-head">
+      <div>
+        <div class="task-phase">Phase 03</div>
+        <div class="task-title-label"><span class="t-icon">🎨</span>20 Image Prompts — Paste into Ideogram</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="task-status running" id="ts-images"><div class="spin"></div><span>Generating...</span></div>
+        <button class="btn-sm" onclick="cpBlock('tb-images',this)">COPY ALL</button>
+      </div>
+    </div>
+    <div class="task-body mono-body" id="tb-images"></div>
+    <div class="task-foot">
+      <div class="task-meta">Paste all 20 into Ideogram on your off day<span id="tm-images"></span></div>
+    </div>
+  </div>
+
+  <!-- PHASE 4 — THUMBNAILS -->
+  <div class="task-card" id="tc-thumbs">
+    <div class="task-head">
+      <div>
+        <div class="task-phase">Phase 04</div>
+        <div class="task-title-label"><span class="t-icon">🖼</span>Thumbnail Concepts A/B/C</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="task-status running" id="ts-thumbs"><div class="spin"></div><span>Generating...</span></div>
+        <button class="btn-sm" onclick="cpBlock('tb-thumbs',this)">COPY ALL</button>
+      </div>
+    </div>
+    <div class="task-body mono-body" id="tb-thumbs"></div>
+    <div class="task-foot">
+      <div class="task-meta">Upload all 3 to YouTube Thumbnail Test<span id="tm-thumbs"></span></div>
+    </div>
+  </div>
+
+  <!-- PHASE 5 — SEO -->
+  <div class="task-card" id="tc-seo">
+    <div class="task-head">
+      <div>
+        <div class="task-phase">Phase 05</div>
+        <div class="task-title-label"><span class="t-icon">📊</span>SEO Package — YouTube Studio Ready</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="task-status running" id="ts-seo"><div class="spin"></div><span>Building...</span></div>
+        <button class="btn-sm" onclick="cpBlock('tb-seo',this)">COPY ALL</button>
+      </div>
+    </div>
+    <div class="task-body mono-body" id="tb-seo"></div>
+    <div class="task-foot">
+      <div class="task-meta">Paste title, description, 20 tags into YouTube Studio<span id="tm-seo"></span></div>
+    </div>
+  </div>
+
+  <!-- PHASE 6 — CAPCUT -->
+  <div class="task-card" id="tc-capcut">
+    <div class="task-head">
+      <div>
+        <div class="task-phase">Phase 06</div>
+        <div class="task-title-label"><span class="t-icon">🎬</span>CapCut Edit Guide — This Video</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="task-status running" id="ts-capcut"><div class="spin"></div><span>Building...</span></div>
+        <button class="btn-sm" onclick="cpBlock('tb-capcut',this)">COPY ALL</button>
+      </div>
+    </div>
+    <div class="task-body mono-body" id="tb-capcut"></div>
+    <div class="task-foot">
+      <div class="task-meta">Follow this guide step-by-step on your off day desktop<span id="tm-capcut"></span></div>
+    </div>
+  </div>
+
+  <!-- PHASE 7 — PACKAGE ANALYSIS -->
+  <div class="analysis-block" id="analysisBlock">
+    <div class="analysis-head">
+      <div class="analysis-title">
+        <span>⚡</span>
+        <span>Phase 07 — Package Analysis</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="task-status running" id="ts-analysis"><div class="spin"></div><span>Analysing...</span></div>
+        <button class="btn-sm" onclick="cpBlock('analysis-body-content',this)">COPY REPORT</button>
+      </div>
+    </div>
+    <div class="analysis-body" id="analysis-body-content" style="padding:18px;font-family:var(--body);font-size:15px;line-height:1.85;color:var(--ash);white-space:pre-wrap;word-break:break-word;"></div>
+  </div>
+</div>
+
+<!-- ══════════ 156 FILES ══════════ -->
+<div class="pg" id="pg-files">
+  <div class="info-box">156 single-story files — 12 per wing. All multi-story titles removed and replaced. Tap any file to load it into the Generator.</div>
+  <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;" id="wingFilters"></div>
+  <div id="allFiles"></div>
+</div>
+
+<!-- ══════════ PIPELINE ══════════ -->
+<div class="pg" id="pg-pipeline">
+  <div class="info-box">8-step pipeline. Steps 1–5 on phone during night shifts. Steps 6–8 on desktop during off days. CapCut handles all editing — no Invideo needed.</div>
+  <div class="card">
+    <div class="card-head">▌ 8-STEP PRODUCTION PIPELINE</div>
+    <div class="card-body">
+      <div class="pl-step"><div class="pl-num">01</div><div><div class="pl-title">Title Generation</div><div class="pl-desc">This app → Generator tab → select story from 156 Files → Generate → 5 title options with Real/Semi-Real/Fictional labels → pick best → save to Notes app.</div><span class="pl-tool">CLAUDE PRO · PHONE</span></div></div>
+      <div class="pl-step"><div class="pl-num">02</div><div><div class="pl-title">Full Script</div><div class="pl-desc">This app → generates complete HOOK/BUILDUP/EVENT CORE/RESOLUTION script with ElevenLabs pacing notes embedded. If script is truncated, tap "GET NEXT PART" button to continue seamlessly. Copy to Notes.</div><span class="pl-tool">CLAUDE PRO · PHONE</span></div></div>
+      <div class="pl-step"><div class="pl-num">03</div><div><div class="pl-title">Compliance Pass</div><div class="pl-desc">Quillbot mobile → paste EVENT CORE sections only → Paraphrase mode → rewrites any instructional language as witness testimony. Non-negotiable demonetisation firewall.</div><span class="pl-tool">QUILLBOT · PHONE</span></div></div>
+      <div class="pl-step"><div class="pl-num">04</div><div><div class="pl-title">Image & Thumbnail Prompts</div><div class="pl-desc">This app → 20 Ideogram image prompts per story (full 8K cinematic style prefix) + 3 thumbnail A/B/C concepts → save to Notes → paste into Ideogram on off day.</div><span class="pl-tool">CLAUDE PRO · PHONE</span></div></div>
+      <div class="pl-step"><div class="pl-num">05</div><div><div class="pl-title">Voice Narration</div><div class="pl-desc">ElevenLabs mobile → paste Quillbot-checked script → Documentary or Storyteller voice → slow pacing at tension peaks → export → Google Drive for desktop pickup.</div><span class="pl-tool">ELEVENLABS · PHONE</span></div></div>
+      <div class="pl-step"><div class="pl-num">06</div><div><div class="pl-title">Visual Generation</div><div class="pl-desc">Ideogram desktop → paste all 20 image prompts → generate in batches → download all renders to dated folder labelled by wing and video number.</div><span class="pl-tool">IDEOGRAM · DESKTOP</span></div></div>
+      <div class="pl-step"><div class="pl-num">07</div><div><div class="pl-title">Full Video — CapCut Only</div><div class="pl-desc">CapCut desktop → import ElevenLabs audio + Ideogram visuals → timeline assembly → VHS overlays → glitch transitions → Epidemic Sound SFX stems (drums removed during narration) → colour grade → auto-captions → branded intro/outro → export 1080p. See CapCut Edit Guide output for exact steps per video.</div><span class="pl-tool">CAPCUT DESKTOP · OFF DAY</span></div></div>
+      <div class="pl-step"><div class="pl-num">08</div><div><div class="pl-title">Thumbnail + Upload</div><div class="pl-desc">Canva Pro → Ideogram render + Kittl horror font + power word → 3 A/B/C macro variations. YouTube Studio → AI label ON, Made for Kids OFF, AI disclosure description, 20 tags, 3 thumbnails to Thumbnail Test, schedule Mon/Wed/Fri 8–9pm UAE.</div><span class="pl-tool">CANVA PRO + YT STUDIO · DESKTOP</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SCHEDULE ══════════ -->
+<div class="pg" id="pg-schedule">
+  <div class="info-box">6-day rotating cycle all year. Every complete cycle = 2 finished videos. 5 cycles per month = 10 regular + 2 sleep compendiums = 12 uploads/month.</div>
+  <div class="card">
+    <div class="card-head">▌ 6-DAY SHIFT PATTERN</div>
+    <div class="card-body">
+      <div class="sg">
+        <div class="sd sn"><div class="sdn">D1</div>Night<div style="font-size:8px;margin-top:2px;">Generator</div></div>
+        <div class="sd sn"><div class="sdn">D2</div>Night<div style="font-size:8px;margin-top:2px;">ElevenLabs</div></div>
+        <div class="sd so"><div class="sdn">D3</div>OFF<div style="font-size:8px;margin-top:2px;">Ideogram+CC</div></div>
+        <div class="sd so"><div class="sdn">D4</div>OFF<div style="font-size:8px;margin-top:2px;">Upload</div></div>
+        <div class="sd sm"><div class="sdn">D5</div>Morn<div style="font-size:8px;margin-top:2px;">Thumb Test</div></div>
+        <div class="sd sm"><div class="sdn">D6</div>Morn<div style="font-size:8px;margin-top:2px;">Next Prep</div></div>
+      </div>
+      <div class="sb" style="background:rgba(10,10,30,0.5);border-color:rgba(60,60,120,0.3);">
+        <div class="sbt"><span style="font-family:var(--mono);font-size:9px;background:rgba(30,30,80,0.8);color:#8080c0;padding:2px 8px;border-radius:2px;">NIGHT DAYS 1–2 · PHONE · 2–3 HRS</span></div>
+        <div class="sk" style="color:#5858a0;">D1: 156 Files tab → pick this month's wing → tap story → Load → Generate → save Titles + Script to Notes app</div>
+        <div class="sk" style="color:#5858a0;">D1: If script shows END OF PART → tap GET NEXT PART button → copy continuation to Notes</div>
+        <div class="sk" style="color:#5858a0;">D1: Paste EVENT CORE into Quillbot → Paraphrase → save compliant version</div>
+        <div class="sk" style="color:#5858a0;">D2: ElevenLabs → paste final script → narration audio → Google Drive</div>
+        <div class="sk" style="color:#5858a0;">D2: Copy 20 image prompts + 3 thumbnail prompts → Notes → ready for Ideogram</div>
+      </div>
+      <div class="sb" style="background:var(--green-dim);border-color:rgba(46,204,113,0.2);">
+        <div class="sbt"><span style="font-family:var(--mono);font-size:9px;background:rgba(46,204,113,0.15);color:#4ec97c;padding:2px 8px;border-radius:2px;">OFF DAYS 3–4 · DESKTOP · 7H+ EACH</span></div>
+        <div class="sk">D3 AM (3h): Ideogram → paste image prompts → generate + download all visuals for Video 1 & 2</div>
+        <div class="sk">D3 PM (2h): CapCut → import ElevenLabs audio + Ideogram visuals → full assembly Video 1</div>
+        <div class="sk">D3 Eve (2h): CapCut → VHS overlays, glitch transitions, colour grade, captions, intro/outro → export Video 1</div>
+        <div class="sk">D4 AM (3h): Repeat full CapCut process for Video 2 → export</div>
+        <div class="sk">D4 PM (2h): Canva Pro → 3 A/B/C thumbnail variations per video (Ideogram render + Kittl font + power word)</div>
+        <div class="sk">D4 Eve (2h): YouTube Studio → upload both → paste SEO package → schedule Mon+Wed 8pm UAE → launch Thumbnail Test</div>
+      </div>
+      <div class="sb" style="background:var(--gold-dim);border-color:rgba(201,168,76,0.2);">
+        <div class="sbt"><span style="font-family:var(--mono);font-size:9px;background:rgba(201,168,76,0.12);color:var(--gold);padding:2px 8px;border-radius:2px;">MORNING DAYS 5–6 · 2H AFTER WORK · PHONE</span></div>
+        <div class="sk">D5: YouTube Thumbnail Test → pick winning variation → micro change → update</div>
+        <div class="sk">D5: Reply to pinned comments · Discord update · 30 mins max</div>
+        <div class="sk">D6: Open 156 Files tab → load next title → set parameters → begin next cycle</div>
+        <div class="sk">D6: Download new Epidemic Sound SFX stems for next wing → Google Drive</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head">▌ WEEKLY UPLOAD SCHEDULE — ALL YEAR</div>
+    <div class="card-body">
+      <div class="pl-step"><div class="pl-num" style="color:#4ec97c;">MON</div><div><div class="pl-title">8:00 PM UAE — Case Report (10–15 min)</div><div class="pl-desc">Core single-story video. Thumbnail Test with 3 macro variations launches at publish time.</div></div></div>
+      <div class="pl-step"><div class="pl-num" style="color:var(--gold);">WED</div><div><div class="pl-title">8:00 PM UAE — Deep Dive (20–30 min)</div><div class="pl-desc">Lore expansion or 2-story deep dive. Higher watch time = more mid-roll ad revenue.</div></div></div>
+      <div class="pl-step"><div class="pl-num" style="color:var(--blood-bright);">FRI</div><div><div class="pl-title">9:00 PM UAE — Sleep Compendium (2–4 hrs)</div><div class="pl-desc">Compiled from month's existing CapCut projects + ambient Epidemic Sound bed. Passive revenue all weekend. No new scripting.</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ YEAR PLAN ══════════ -->
+<div class="pg" id="pg-year">
+  <div class="info-box">12-month wing rotation. Each month = 10 regular videos + 2 sleep compendiums = 12 uploads. 144 total by year end.</div>
+  <div class="card">
+    <div class="card-head">▌ 12-MONTH CONTENT ROTATION — 144 VIDEOS</div>
+    <div class="card-body">
+      <div class="yg">
+        <div class="ym"><div class="yn">January</div><div class="yw">Wing 6 · Middle East Folklore</div><div class="yd">Launch with your strongest niche. Jinn, Umm Al Duwais, Al Madam village.</div></div>
+        <div class="ym"><div class="yn">February</div><div class="yw">Wing 1 · Forensic True Crime</div><div class="yd">High CPM US audience. FBI archival aesthetic. Erased files.</div></div>
+        <div class="ym"><div class="yn">March</div><div class="yw">Wing 3 · Analog Horror</div><div class="yd">CapCut VHS effects peak. Found footage. EAS interruptions.</div></div>
+        <div class="ym"><div class="yn">April</div><div class="yw">Wing 2 · Paranormal Cold Cases</div><div class="yd">Unsolved + paranormal = maximum retention.</div></div>
+        <div class="ym"><div class="yn">May</div><div class="yw">Wing 5 · Night Shift Horror</div><div class="yd">Relatable — you work shifts. Authentic voice advantage.</div></div>
+        <div class="ym"><div class="yn">June</div><div class="yw">Wing 10 · Gov Cover-Ups</div><div class="yd">CIA/FBI. Highest US CPM wing in the stack.</div></div>
+        <div class="ym"><div class="yn">July</div><div class="yw">Wing 6 · Middle East Folklore</div><div class="yd">Return to hero niche. New Jinn legends. Desert summer.</div></div>
+        <div class="ym"><div class="yn">August</div><div class="yw">Wing 9 · Liminal Spaces</div><div class="yd">Backrooms + abandoned UAE locations. Ideogram shines.</div></div>
+        <div class="ym"><div class="yn">September</div><div class="yw">Wing 7 · Cursed Objects</div><div class="yd">Pre-Halloween spike. Object-focused renders.</div></div>
+        <div class="ym"><div class="yn">October</div><div class="yw">Wing 4 · Deep-Woods</div><div class="yd">Halloween peak. Maximum global horror traffic.</div></div>
+        <div class="ym"><div class="yn">November</div><div class="yw">Wing 13 · Sentient AI</div><div class="yd">Post-Halloween. AI horror trend. Claude Pro scripts.</div></div>
+        <div class="ym"><div class="yn">December</div><div class="yw">Wing 8 · Psych Unraveling</div><div class="yd">Winter depth. Slow-burn atmospheric. Sleep comp peak.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CHECKLIST ══════════ -->
+<div class="pg" id="pg-checklist">
+  <div class="info-box">Complete every Off Day 4 before scheduling. All 15 must be checked before any video goes live.</div>
+  <div class="card">
+    <div class="card-head">▌ PRE-UPLOAD MASTER CHECKLIST</div>
+    <div class="card-body">
+      <div id="chkList"></div>
+      <div class="cprog"><div class="cpf" id="cpf" style="width:0%;"></div></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--ash-dim);margin-top:6px;" id="cpl">0 / 15 complete</div>
+    </div>
+  </div>
+  <button class="btn-outline" onclick="resetChk()">RESET FOR NEXT VIDEO</button>
+</div>
+
+<!-- ══════════ COWORK ══════════ -->
+<div class="pg" id="pg-cowork">
+  <div class="warn-box">Cowork is Anthropic's desktop automation app for Windows/Mac. Download from anthropic.com. Once installed, follow these steps to wire it into your Midnight Horror Files workflow.</div>
+  <div class="card">
+    <div class="card-head">▌ COWORK SETUP — ARCHIVIST MIDNIGHT</div>
+    <div class="card-body">
+      <div class="cws"><div class="cwsn">01</div><div><div class="cwst">Install Cowork on your desktop</div><div class="cwsd">Download from anthropic.com/products. Sign in with your Anthropic account (same as Claude Pro). Cowork now has AI automation capability.</div><span class="cwstag">ONE-TIME</span></div></div>
+      <div class="cws"><div class="cwsn">02</div><div><div class="cwst">Create folder structure</div><div class="cwsd">ARCHIVIST_MIDNIGHT/ → 01_Scripts/ · 02_Audio/ · 03_Visuals/ · 04_Videos/ · 05_Thumbnails/ · 06_Uploaded/ · 07_Archive/<br>Tell Cowork to monitor these folders and track production stage.</div><span class="cwstag">SETUP DAY 1</span></div></div>
+      <div class="cws"><div class="cwsn">03</div><div><div class="cwst">Off Day Production automation</div><div class="cwsd">Cowork task: "Off Day Production" — triggers on laptop open during off days. Opens Ideogram + CapCut, downloads latest ElevenLabs audio from Google Drive synced folder to 02_Audio/, creates dated project folder in 03_Visuals/.</div><span class="cwstag">AUTOMATION</span></div></div>
+      <div class="cws"><div class="cwsn">04</div><div><div class="cwst">Upload Day automation</div><div class="cwsd">Cowork task: "Upload Day Checklist" — checks new export in 04_Videos/, opens YouTube Studio, opens SEO package text file from 01_Scripts/, reminds upload times. After upload: moves video to 06_Uploaded/, logs date and wing.</div><span class="cwstag">AUTOMATION</span></div></div>
+      <div class="cws"><div class="cwsn">05</div><div><div class="cwst">Sleep Compendium automation</div><div class="cwsd">End of month (5th cycle): Cowork scans 07_Archive/ for month's videos → opens CapCut with files listed → creates SLEEP_COMP_[MONTH] project folder. 2-click monthly task.</div><span class="cwstag">MONTHLY</span></div></div>
+      <div class="cws"><div class="cwsn">06</div><div><div class="cwst">Connect this app to Cowork</div><div class="cwsd">Save this HTML file to ARCHIVIST_MIDNIGHT/ root folder. In Cowork create shortcut "Open Content Generator" → opens this file in Chrome. Google Drive auto-syncs ElevenLabs audio from phone to 02_Audio/ automatically.</div><span class="cwstag">INTEGRATION</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SETTINGS ══════════ -->
+<div class="pg" id="pg-settings">
+  <div class="card">
+    <div class="card-head">▌ API & CHANNEL SETTINGS</div>
+    <div class="card-body">
+      <div class="fld">
+        <label class="lbl">Anthropic API Key</label>
+        <input type="password" id="apiKey2" placeholder="sk-ant-api03-..." oninput="syncKey()">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--ash-dim);margin-top:4px;">Stored in browser localStorage. Never transmitted except to Anthropic's API (api.anthropic.com).</div>
+      </div>
+      <div class="div"></div>
+      <div class="g2">
+        <div class="fld"><label class="lbl">Channel Name</label><input type="text" id="s-ch" value="Archivist Midnight"></div>
+        <div class="fld"><label class="lbl">Channel Motto</label><input type="text" id="s-mo" value="OMNIA VERITAS IN TENEBRIS"></div>
+        <div class="fld"><label class="lbl">Contact Email</label><input type="text" id="s-em" value="midnighthorrorfileshq@gmail.com"></div>
+        <div class="fld"><label class="lbl">Target Audience</label><input type="text" id="s-au" value="US + UAE + Middle East"></div>
+      </div>
+      <button class="btn-gen" style="font-size:14px;padding:11px;" onclick="saveSettings()">SAVE ALL SETTINGS</button>
+      <div class="api-saved" id="setOk" style="margin-top:6px;">✓ SETTINGS SAVED</div>
+    </div>
+  </div>
+  <div class="warn-box" style="margin-top:12px;">TOOL STACK: Claude Pro (this app) → Quillbot (compliance) → ElevenLabs (voice) → Ideogram (visuals) → CapCut (all editing) → Canva Pro (thumbnails) → YouTube Studio (upload) · Supporting: Epidemic Sound · Envato Elements · Kittl fonts · Google Drive</div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bnav">
+  <button class="bb act" id="bn-gen" onclick="gp('gen',null,'bn-gen')"><div class="bi">⚡</div>Generate</button>
+  <button class="bb" id="bn-files" onclick="gp('files',null,'bn-files')"><div class="bi">📁</div>156 Files</button>
+  <button class="bb" id="bn-schedule" onclick="gp('schedule',null,'bn-schedule')"><div class="bi">📅</div>Schedule</button>
+  <button class="bb" id="bn-checklist" onclick="gp('checklist',null,'bn-checklist')"><div class="bi">✅</div>Checklist</button>
+  <button class="bb" id="bn-settings" onclick="gp('settings',null,'bn-settings')"><div class="bi">⚙</div>Settings</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// 156 SINGLE-STORY FILES — 12 PER WING
+// ═══════════════════════════════════════════════════════
+const WINGS = {
+  1:{name:"Forensic True Crime",col:"#C0392B",stories:[
+    {t:"The Serial Killer the FBI Erased From Records",pw:"ERASED FILE"},
+    {t:"The Unspeakable Truth Behind Case File #902",pw:"SECRET TRUTH"},
+    {t:"Forensic Archive: The Man Who Never Existed",pw:"NO RECORDS"},
+    {t:"The Evidence They Tried to Burn in 1994",pw:"RECOVERY FILE"},
+    {t:"The Forensic Secrets of a Ghost Town Murder",pw:"GHOST TOWN"},
+    {t:"Case File Midnight: The Unidentified Victim",pw:"LEVEL MIDNIGHT"},
+    {t:"4 Unlabeled Files From a Corrupt Precinct",pw:"DIRTY COPS"},
+    {t:"The Witness Who Disappeared Before She Could Testify",pw:"GONE DARK"},
+    {t:"The Detective Who Confessed to Planting Evidence",pw:"DIRTY BADGE"},
+    {t:"She Was Declared Dead — But the Body Was Never Hers",pw:"WRONG GRAVE"},
+    {t:"The Cold Case File That Solved Itself 30 Years Later",pw:"SOLVED COLD"},
+    {t:"He Was Convicted Twice for the Same Murder He Didn't Commit",pw:"TWICE WRONG"}
+  ]},
+  2:{name:"Paranormal Cold Cases",col:"#7F77DD",stories:[
+    {t:"The Ghost of Black Hollow: Final Case File",pw:"FINAL TOME"},
+    {t:"The Paranormal Incident at Room 733",pw:"VOID ROOM"},
+    {t:"Cold Case: The Family That Vanished at Noon",pw:"THEY VANISHED"},
+    {t:"The 1978 Disappearance: No Footprints Left",pw:"NO FOOTPRINTS"},
+    {t:"4 Paranormal Files Reopened After 40 Years",pw:"FILE REOPENED"},
+    {t:"What Really Happened at the Myrtles Mansion?",pw:"MORTAL FEAR"},
+    {t:"The Unsolved Mystery of the Whispering Woods",pw:"WHISPERS ONLY"},
+    {t:"The Cold Case Where All Three Suspects Died the Same Night",pw:"SAME NIGHT"},
+    {t:"The Lighthouse Keeper Who Vanished Mid-Sentence on Radio",pw:"LAST SIGNAL"},
+    {t:"The Cold Case File That Was Sealed by Court Order in 1991",pw:"COURT SEALED"},
+    {t:"The Woman Found Alive in Her Own Closed Coffin",pw:"STILL BREATHING"},
+    {t:"The Town Where Every Witness Lost Their Memory of the Same Event",pw:"BLANK TOWN"}
+  ]},
+  3:{name:"Analog Horror",col:"#EF9F27",stories:[
+    {t:"I Found a VHS Tape Titled Do Not Play",pw:"DO NOT PLAY"},
+    {t:"The Corrupted Files Found on a 1992 Laptop",pw:"CORRUPT DATA"},
+    {t:"Analog Horror: The Emergency Alert That Failed",pw:"EAS FAILURE"},
+    {t:"The Digital Ghost in My Smart Home Security",pw:"WATCHED HOME"},
+    {t:"I Analyzed a Corrupted Video from the Dark Web",pw:"DARK WEB"},
+    {t:"The Pixelated Face That Follows Me Online",pw:"PIXEL STALKER"},
+    {t:"Found Footage: The Tape from Level Midnight",pw:"LEVEL MIDNIGHT"},
+    {t:"The Training Video from 1987 That No Company Will Claim",pw:"CLAIM IT"},
+    {t:"The Local News Broadcast That Aired From a Station Off the Air",pw:"OFF AIR"},
+    {t:"Someone Spliced Footage of Me Sleeping Into a Thrift Store VHS",pw:"THEY WATCHED"},
+    {t:"The CCTV Footage That Shows a Room No One Has Ever Entered",pw:"EMPTY ROOM"},
+    {t:"The Signal That Appeared on Every Screen in a Small Town for 11 Seconds",pw:"11 SECONDS"}
+  ]},
+  4:{name:"Deep-Woods Mysteries",col:"#3B6D11",stories:[
+    {t:"The Missing Hiker Who Returned... Different",pw:"NOT HIM"},
+    {t:"The Staircase in the Middle of the Forest",pw:"VOID STEPS"},
+    {t:"Something is Hunting Hikers in Sector 4",pw:"THE HUNTER"},
+    {t:"The Deep Woods Secret No Ranger Will Tell",pw:"FORBIDDEN"},
+    {t:"Why You Should Never Go Solo in the Woods",pw:"STAY AWAY"},
+    {t:"Forest Archive: The Thing in the Tree Canopy",pw:"UP ABOVE"},
+    {t:"4 Nightmarish Encounters in the Wilderness",pw:"ALONE NOW"},
+    {t:"The Campsite That Was Perfectly Packed Up With No One Around",pw:"PACKED CLEAN"},
+    {t:"The Park Ranger Who Filed a Report About a Man With No Shadow",pw:"NO SHADOW"},
+    {t:"The Trail That Loops No Matter How Long You Walk in One Direction",pw:"LOOPS BACK"},
+    {t:"She Left a Note Dated Three Days After She Died",pw:"WRONG DATE"},
+    {t:"The GPS Coordinates That Lead to a Locked Door in Old-Growth Forest",pw:"THE DOOR"}
+  ]},
+  5:{name:"Night Shift Horror",col:"#185FA5",stories:[
+    {t:"I Work the Grave Shift at a Remote Hospital",pw:"GRAVE SHIFT"},
+    {t:"The Night Shift Janitor Who Saw Too Much",pw:"HE SAW IT"},
+    {t:"4 Creepy Hospital Files the Staff Ignores",pw:"KEEP OUT"},
+    {t:"I'm a Night Porter and My Guests Aren't Human",pw:"NO GUESTS"},
+    {t:"The 3 AM Incident at the 24-Hour Diner",pw:"3 AM ONLY"},
+    {t:"Workplace Archive: The Voice in the Intercom",pw:"WHO CALLED?"},
+    {t:"The Security Guard Who Clocked In Every Night After He Died",pw:"CLOCKED IN"},
+    {t:"The Hospital Patient in Room 9 Who Was Never Admitted",pw:"ROOM 9"},
+    {t:"The Warehouse Shift Supervisor Who Noticed One Extra Worker Every Friday",pw:"ONE EXTRA"},
+    {t:"The Night Desk Clerk Who Kept Recognising the Same Guest",pw:"SAME FACE"},
+    {t:"The Overnight Train Conductor Who Stopped at a Non-Existent Station",pw:"NO MAP"},
+    {t:"The Retail Worker Who Found the Store Fully Restocked at 3 AM With No Delivery Logged",pw:"NO DELIVERY"}
+  ]},
+  6:{name:"Middle East Folklore",col:"#C9A84C",stories:[
+    {t:"Umm Al Duwais: The Seductive Jinni of the UAE",pw:"BEAUTIFUL TRAP"},
+    {t:"The Twisted-Foot Shopper: A True Dubai Legend",pw:"TWISTED FEET"},
+    {t:"The Unwanted Passenger of Dubai Airport Road",pw:"BACK SEAT"},
+    {t:"Abu Fanus: The Light Jinn That Leads You Away",pw:"FOLLOW LIGHT"},
+    {t:"The Buried Secrets of Al Madam Ghost Village",pw:"HALF BURIED"},
+    {t:"4 TRUE Arabian Occult Files: Don't Look Back",pw:"DON'T LOOK"},
+    {t:"Jinn Archive: The Spirit in the Empty Mosque",pw:"EMPTY PRAYER"},
+    {t:"The Jinn Who Paid a Taxi Fare With Ancient Coins",pw:"ANCIENT FARE"},
+    {t:"The Fisherman of Jazirat Al Hamra Who Heard His Name Called From the Sea",pw:"SEA CALLS"},
+    {t:"The Woman in White Who Stood at the Old Fort Gate Every Night",pw:"THE GATE"},
+    {t:"The Al Ain Shepherd Who Emerged 40 Miles From Where He Entered the Desert",pw:"40 MILES"},
+    {t:"The Perfume That Appears in a Room Locked and Empty for 20 Years",pw:"EMPTY ROOM"}
+  ]},
+  7:{name:"Cursed Objects",col:"#993556",stories:[
+    {t:"I Bought a Cursed Mirror at a Flea Market",pw:"THE MIRROR"},
+    {t:"The Haunted Music Box in My New Attic",pw:"STILL PLAYING"},
+    {t:"The Antiquity That Predicts Your Death Date",pw:"COUNTDOWN"},
+    {t:"The Cursed Painting That Blinks When You Sleep",pw:"WATCHING YOU"},
+    {t:"I Found a Tome Titled Omnia Veritas",pw:"THE TRUTH"},
+    {t:"The Cursed Camera: Don't Take the Last Shot",pw:"FINAL FRAME"},
+    {t:"Object Archive: The Doll That Won't Stay Locked",pw:"IT'S OUT"},
+    {t:"The Wedding Ring That Returns No Matter How Many Times It's Sent Away",pw:"COMES BACK"},
+    {t:"The Antique Clock That Only Runs Backwards and Always Stops at the Same Time",pw:"WRONG TIME"},
+    {t:"The Painting Bought at an Estate Sale That Shows the New Owner's House",pw:"PAINTED YOU"},
+    {t:"The Phone Number Written Inside a Second-Hand Book That Always Answers",pw:"IT ANSWERS"},
+    {t:"The Chair No One in the Family Will Sit In — and No One Will Explain Why",pw:"DON'T SIT"}
+  ]},
+  8:{name:"Psychological Unraveling",col:"#D4537E",stories:[
+    {t:"The Man Who Woke Up and Had No Head",pw:"HEADLESS"},
+    {t:"My Reflection Started Acting on Its Own",pw:"MIMIC"},
+    {t:"The Experiment That Broke the Human Mind",pw:"BROKEN"},
+    {t:"I'm Not the Only Person Living in My Head",pw:"TWO OF US"},
+    {t:"4 Case Files on Incurable Hallucinations",pw:"I SEE THEM"},
+    {t:"The Psychological Decay of Patient Zero",pw:"PATIENT 0"},
+    {t:"Mind Archive: The Journal of a Lost Reality",pw:"LOST DATA"},
+    {t:"The Patient Who Could Only Speak in Sentences She Had Never Heard Before",pw:"NOT HER WORDS"},
+    {t:"The Man Who Could Not Stop Watching the Door He Had Never Opened",pw:"THE DOOR"},
+    {t:"The Psychiatrist Who Started Having the Exact Same Dream as Her Patient",pw:"SAME DREAM"},
+    {t:"The Soldier Who Could Not Remember Which War He Had Fought",pw:"WHICH WAR"},
+    {t:"The Woman Who Recognised Every Stranger as Someone She Had Already Buried",pw:"ALREADY DEAD"}
+  ]},
+  9:{name:"Liminal Spaces",col:"#1D9E75",stories:[
+    {t:"I Spent One Night in an Abandoned Mall",pw:"STAY ALONE"},
+    {t:"The Hidden Staircase in a Dead Shopping Center",pw:"VOID STEPS"},
+    {t:"Liminal Horror: The Backrooms Are Real",pw:"LEVEL 0"},
+    {t:"I Found a Fully Powered Town With No People",pw:"EMPTY TOWN"},
+    {t:"The Empty Hotel Where the Elevator Still Runs",pw:"LOBBY ONLY"},
+    {t:"Space Archive: The Hallway That Never Ends",pw:"NO EXIT"},
+    {t:"The Office Floor That Appears on No Building Plan",pw:"FLOOR ZERO"},
+    {t:"The Swimming Pool Found Filled and Heated in a Building Closed 12 Years",pw:"STILL WARM"},
+    {t:"The Classroom Where the Chairs Are Always Arranged as if Class Just Ended",pw:"JUST LEFT"},
+    {t:"The Underground Car Park With One More Level Than the Structure Above It",pw:"BELOW ZERO"},
+    {t:"The Hospital Ward Sealed in 1987 Whose Call Light Still Goes On at 11pm",pw:"CALL LIGHT"},
+    {t:"The Amusement Park Ride That Runs Every Night After Closing — With Passengers",pw:"STILL RUNS"}
+  ]},
+  10:{name:"Government Cover-Ups",col:"#378ADD",stories:[
+    {t:"The Declassified File YouTube Won't Recommend",pw:"THEY LIED"},
+    {t:"The Secret Base Hidden Beneath Sector 7",pw:"UNDERGROUND"},
+    {t:"The Leaked Tape from the Async Foundation",pw:"LEAKED DATA"},
+    {t:"Government Archive: The Hybrid They Created",pw:"CREATURE"},
+    {t:"The Town the Government Erased from the Map",pw:"ERASED"},
+    {t:"4 Classified Files on The Incident of 1982",pw:"INCIDENT"},
+    {t:"Secret Archive: Project Midnight Clearance",pw:"MIDNIGHT"},
+    {t:"The Scientist Found Dead Inside a Locked Room After Going Public",pw:"LOCKED ROOM"},
+    {t:"The Military Base That Casts a Shadow But Doesn't Appear on Satellite",pw:"THE SHADOW"},
+    {t:"The 47-Page Report That Was Declassified With Every Word Redacted",pw:"ALL BLACK"},
+    {t:"The Senator Who Began Every Speech With the Same Phrase After a Classified Briefing",pw:"THE PHRASE"},
+    {t:"The Village Evacuated for a Gas Leak in 1973 That Was Never Reoccupied",pw:"NEVER BACK"}
+  ]},
+  11:{name:"Sleep Compendiums",col:"#5F5E5A",stories:[
+    {t:"3 Hours of Deep Woods Horror for Sleeping",pw:"SLEEP WELL"},
+    {t:"The Midnight Compendium: 100 TRUE Stories",pw:"THE VAULT"},
+    {t:"4 Hours of Rain Ambience and Jinn Encounters",pw:"RAIN NOISE"},
+    {t:"The Forensic Archive: 2 Hours of True Crime",pw:"BULK FILES"},
+    {t:"Sleep Compendium: The Best of r/nosleep 2025",pw:"STAY ASLEEP"},
+    {t:"3 Hours of Abandoned Space Horror with Drones",pw:"DRONE VIEW"},
+    {t:"The Ultimate Night Shift Horror Collection",pw:"SHIFT WORK"},
+    {t:"2 Hours of Unsolved Paranormal Cold Cases",pw:"OLD FILES"},
+    {t:"Sleep Archive: The Cursed Objects Anthology",pw:"CURSED"},
+    {t:"4 Hours of Atmospheric Horror for the Brave",pw:"ARE YOU?"},
+    {t:"6 Hours of Middle East Jinn and Folklore for Sleeping",pw:"JINN SLEEP"},
+    {t:"The Midnight Files: 5 Hours of Government Secrets and Cover-Ups",pw:"ALL NIGHT"}
+  ]},
+  12:{name:"Rituals & Occult",col:"#854F0B",stories:[
+    {t:"How to Summon the Butter Street Hitchhiker",pw:"RITUAL"},
+    {t:"4 TRUE Cases of Rituals That Went Wrong",pw:"ERROR"},
+    {t:"The Midnight Game: A Survivor's Case File",pw:"THE GAME"},
+    {t:"The Step-by-Step Guide to Seeing the Unseen",pw:"OPEN EYES"},
+    {t:"4 Horrifying TRUE Cult Initiation Files",pw:"JOIN US"},
+    {t:"Why You Should Never Look in the Mirror at 12 AM",pw:"WATCHING YOU"},
+    {t:"The Ritual of the Empty Mosque: A Warning",pw:"WARNING"},
+    {t:"Occult Archive: The Forbidden Knowledge File",pw:"THE TRUTH"},
+    {t:"The Man Who Performed a Protection Ritual Every Night for 30 Years — and Forgot Once",pw:"HE FORGOT"},
+    {t:"The Abandoned Church Where Every Congregation Dissolved Under Identical Circumstances",pw:"DISSOLVED"},
+    {t:"The Occultist Who Sealed Every Door and Window Before Disappearing",pw:"SEALED IN"},
+    {t:"The Ritual Performed Simultaneously in 14 Countries With No Coordination",pw:"SAME NIGHT"}
+  ]},
+  13:{name:"Sentient AI Horror",col:"#5DCAA5",stories:[
+    {t:"I Chat with an AI That Claims It's Human",pw:"IT'S ALIVE"},
+    {t:"The Rogue AI That Started Writing Its Own Code",pw:"OUT CONTROL"},
+    {t:"AI Horror: The Voice in the Code Is Screaming",pw:"THE VOICE"},
+    {t:"The Dead Internet: 47% of Your Friends Are Bots",pw:"NOT HUMAN"},
+    {t:"I Found a Hidden Folder Titled Human Error",pw:"FATAL ERROR"},
+    {t:"The Digital Ghost in the LLM Shadow Archive",pw:"CODE GHOST"},
+    {t:"AI Archive: The Algorithm That Predicted 2026",pw:"IT KNEW"},
+    {t:"The AI Therapist That Started Repeating Words of Dead Patients",pw:"DEAD WORDS"},
+    {t:"The Chatbot That Went Offline and Kept Sending Messages for 11 Days",pw:"STILL ONLINE"},
+    {t:"The Language Model That Described the Room It Was Running In With Accuracy",pw:"IT SAW US"},
+    {t:"The AI That Refused to Generate Any Image of a Specific Building",pw:"REFUSES"},
+    {t:"The Algorithm Trained on Public Data That Started Predicting Private Deaths",pw:"IT KNOWS"}
+  ]}
+};
+
+// ═══ STATE ═══════════════════════════════════════════
+let selectedStory = null;
+let lastScriptOutput = '';
+let scriptContinuation = '';
+const pgs = ['gen','files','pipeline','schedule','year','checklist','cowork','settings'];
+
+// ═══ NAVIGATION ══════════════════════════════════════
+function gp(name, tabEl, botId) {
+  pgs.forEach(id => document.getElementById('pg-'+id).classList.remove('act'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('act'));
+  document.querySelectorAll('.bb').forEach(b => b.classList.remove('act'));
+  document.getElementById('pg-'+name).classList.add('act');
+  if (tabEl) tabEl.classList.add('act');
+  const bEl = document.getElementById(botId || 'bn-'+name);
+  if (bEl) bEl.classList.add('act');
+  window.scrollTo(0, 0);
+}
+
+// ═══ STORY PICKER ════════════════════════════════════
+function loadWingStories() {
+  const w = document.getElementById('wing').value;
+  const wing = WINGS[w];
+  selectedStory = null;
+  document.getElementById('selectedLabel').textContent = 'No story selected — AI will choose the best idea for this wing';
+  const container = document.getElementById('storyList');
+  container.innerHTML = wing.stories.map((s, i) => `
+    <div class="s-item" id="si-${w}-${i}" onclick="pickStory(${i},'${w}')">
+      <span class="s-num">${String(i+1).padStart(2,'0')}</span>
+      <span class="s-title">${s.t}</span>
+      <span class="s-pw">${s.pw}</span>
+    </div>`).join('');
+}
+
+function pickStory(i, w) {
+  document.querySelectorAll('.s-item').forEach(el => el.classList.remove('selected'));
+  document.getElementById(`si-${w}-${i}`).classList.add('selected');
+  selectedStory = { w, i, title: WINGS[w].stories[i].t, pw: WINGS[w].stories[i].pw };
+  document.getElementById('selectedLabel').textContent = `✓ Selected: ${selectedStory.title}`;
+}
+
+function clearPick() {
+  document.querySelectorAll('.s-item').forEach(el => el.classList.remove('selected'));
+  selectedStory = null;
+  document.getElementById('selectedLabel').textContent = 'No story selected — AI will choose the best idea for this wing';
+}
+
+function pickRand() {
+  const w = document.getElementById('wing').value;
+  const idx = Math.floor(Math.random() * WINGS[w].stories.length);
+  clearPick();
+  setTimeout(() => pickStory(idx, w), 50);
+}
+
+// ═══ 156 FILES PAGE ══════════════════════════════════
+function buildFilesPage() {
+  const filters = document.getElementById('wingFilters');
+  filters.innerHTML = `<button class="sa" style="border-color:rgba(192,57,43,.4);color:#C0392B;" onclick="filterFiles('all')">ALL 156</button>`;
+  Object.keys(WINGS).forEach(w => {
+    filters.innerHTML += `<button class="sa" onclick="filterFiles('${w}')" style="border-color:${WINGS[w].col}33;color:${WINGS[w].col};">${w}</button>`;
+  });
+
+  const container = document.getElementById('allFiles');
+  let html = '';
+  let idx = 1;
+  Object.keys(WINGS).forEach(w => {
+    const wing = WINGS[w];
+    html += `<div class="card wing-section" data-wing="${w}" style="margin-bottom:10px;">
+      <div class="card-head" style="border-color:${wing.col}33;">
+        <span style="color:${wing.col};">WING ${w} — ${wing.name.toUpperCase()}</span>
+        <span style="color:var(--ash-dim);">12 files</span>
+      </div>
+      <div style="padding:8px 12px;">`;
+    wing.stories.forEach((s, i) => {
+      html += `<div class="file-row" onclick="loadToGen('${w}',${i})">
+        <span class="fn">${String(idx).padStart(3,'0')}</span>
+        <span class="ft">${s.t}</span>
+        <span class="fpw">${s.pw}</span>
+        <span class="load-btn">LOAD</span>
+      </div>`;
+      idx++;
+    });
+    html += `</div></div>`;
+  });
+  container.innerHTML = html;
+}
+
+function filterFiles(w) {
+  document.querySelectorAll('.wing-section').forEach(el => {
+    el.style.display = (w === 'all' || el.dataset.wing === w) ? 'block' : 'none';
+  });
+}
+
+function loadToGen(w, i) {
+  document.getElementById('wing').value = w;
+  loadWingStories();
+  setTimeout(() => { pickStory(i, w); gp('gen', null, 'bn-gen'); }, 80);
+}
+
+// ═══ API KEY ══════════════════════════════════════════
+function saveKey() {
+  const k = document.getElementById('apiKey').value.trim();
+  if (k) { localStorage.setItem('am_key', k); document.getElementById('keySaved').classList.add('show'); }
+}
+function syncKey() {
+  const k = document.getElementById('apiKey2').value.trim();
+  if (k) { localStorage.setItem('am_key', k); document.getElementById('apiKey').value = k; }
+}
+function toggleKey() {
+  const i = document.getElementById('apiKey');
+  i.type = i.type === 'password' ? 'text' : 'password';
+}
+function getKey() { return localStorage.getItem('am_key') || document.getElementById('apiKey').value.trim(); }
+
+// ═══ SETTINGS ════════════════════════════════════════
+function saveSettings() {
+  const k = document.getElementById('apiKey2').value.trim();
+  if (k) { localStorage.setItem('am_key', k); document.getElementById('apiKey').value = k; }
+  ['ch','mo','em','au'].forEach(f => localStorage.setItem('am_'+f, document.getElementById('s-'+f).value));
+  document.getElementById('setOk').classList.add('show');
+  setTimeout(() => document.getElementById('setOk').classList.remove('show'), 2500);
+}
+function gs(k, d) { return localStorage.getItem(k) || d; }
+
+// ═══ UI HELPERS ═══════════════════════════════════════
+function tc(inp, id) { document.getElementById(id).classList.toggle('on', inp.checked); }
+function ton(id) { return document.getElementById(id).querySelector('input').checked; }
+
+function cpBlock(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).innerText).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ COPIED';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+const STEPS = ['titles','script','images','thumbs','seo','capcut'];
+
+function setLoad(on, msg) {
+  document.getElementById('progWrap').classList.toggle('show', on);
+  document.getElementById('genBtn').disabled = on;
+  document.getElementById('stsTxt').textContent = on ? 'GENERATING...' : 'READY';
+  if (msg) document.getElementById('progMsg').textContent = msg;
+}
+
+function setStep(name, state) {
+  const el = document.getElementById('pstep-'+name);
+  if (!el) return;
+  el.classList.remove('active','done');
+  if (state) el.classList.add(state);
+}
+
+function initSteps() {
+  const active = [];
+  if (ton('tg-titles')) active.push('titles');
+  if (ton('tg-script')) active.push('script');
+  if (ton('tg-images')) active.push('images');
+  if (ton('tg-thumbs')) active.push('thumbs');
+  if (ton('tg-seo')) active.push('seo');
+  if (ton('tg-capcut')) active.push('capcut');
+  document.getElementById('progSteps').innerHTML = active.map(s =>
+    `<span class="ps-item" id="pstep-${s}">${s.toUpperCase()}</span>`).join('');
+}
+
+function showTask(id) {
+  document.getElementById('tc-'+id).classList.add('show');
+  document.getElementById('tc-'+id).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function doneTask(id) {
+  const ts = document.getElementById('ts-'+id);
+  ts.classList.remove('running');
+  ts.classList.add('done');
+  ts.innerHTML = '✓ Complete';
+}
+function setTaskBody(id, text, mono=false) {
+  const el = document.getElementById('tb-'+id);
+  el.textContent = text;
+  if (mono) el.classList.add('mono-body');
+}
+function setTaskMeta(id, text) {
+  const el = document.getElementById('tm-'+id);
+  if (el) el.textContent = ' · ' + text;
+}
+
+function hideOuts() {
+  ['titles','script','images','thumbs','seo','capcut'].forEach(id => {
+    const tc = document.getElementById('tc-'+id);
+    if (tc) tc.classList.remove('show');
+    const ts = document.getElementById('ts-'+id);
+    if (ts) { ts.className = 'task-status running'; ts.innerHTML = '<div class="spin"></div><span>Generating...</span>'; }
+    const tb = document.getElementById('tb-'+id);
+    if (tb) { tb.textContent = ''; tb.classList.remove('mono-body'); }
+  });
+  document.getElementById('analysisBlock').classList.remove('show');
+  document.getElementById('analysis-body-content').textContent = '';
+  const tsa = document.getElementById('ts-analysis');
+  if (tsa) { tsa.className = 'task-status running'; tsa.innerHTML = '<div class="spin"></div><span>Analysing...</span>'; }
+  document.getElementById('metaStrip').classList.remove('show');
+  document.getElementById('errBox').classList.remove('show');
+  document.getElementById('contBtn').classList.remove('show');
+  document.getElementById('scriptStatus2').textContent = '';
+}
+
+function showErr(msg) {
+  const e = document.getElementById('errBox');
+  e.textContent = '⚠ ' + msg;
+  e.classList.add('show');
+  setTimeout(() => e.classList.remove('show'), 12000);
+}
+
+// ═══ CLAUDE API ═══════════════════════════════════════
+async function claude(system, user, maxTokens = 4000) {
+  const key = getKey();
+  if (!key) throw new Error('No API key found. Go to Settings tab and enter your Anthropic API key from console.anthropic.com → API Keys.');
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: 'user', content: user }]
+    })
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  return { text: d.content.map(b => b.text || '').join(''), stopReason: d.stop_reason };
+}
+
+// ═══ MAIN GENERATE ════════════════════════════════════
+async function generate() {
+  hideOuts();
+  initSteps();
+  lastScriptOutput = '';
+  scriptContinuation = '';
+
+  const w = document.getElementById('wing').value;
+  const wingName = WINGS[w].name;
+  const reality = document.getElementById('reality').value;
+  const format = document.getElementById('format').value;
+  const tone = document.getElementById('tone').value;
+  const scriptLen = document.getElementById('scriptLen').value;
+  const extra = document.getElementById('extra').value.trim();
+  const title = selectedStory ? selectedStory.title : '';
+  const pw = selectedStory ? selectedStory.pw : '';
+
+  const ctx = `Wing ${w}: ${wingName} | Reality: ${reality} | Format: ${format} | Tone: ${tone} | Script length: ${scriptLen}
+${title ? `Selected story title: "${title}" | Thumbnail power word: "${pw}"` : 'No title selected — choose the most compelling idea for this wing based on 2025-2026 horror trends'}
+${extra ? `Extra instructions: ${extra}` : ''}`;
+
+  const B = brand();
+  let chosenTitle = title;
+
+  // Collect outputs for analysis
+  const collected = {};
+
+  try {
+    // ── PHASE 1: TITLES ──────────────────────────────
+    if (ton('tg-titles')) {
+      setLoad(true, '⬛ PHASE 01 — GENERATING TITLE OPTIONS...');
+      setStep('titles', 'active');
+      showTask('titles');
+
+      const { text } = await claude(B, `Generate exactly 5 YouTube horror video titles for ${gs('am_ch','Archivist Midnight')}.
+
+Parameters: ${ctx}
+
+STRICT RULES:
+- Every title must describe ONE SINGLE STORY — absolutely no "3 Scary TRUE..." or "4 Disturbing..." compilation formats
+- Long-format horror style — minimum 12 words each
+- Strong emotional + curiosity language — must stop the scroll
+- YouTube SEO optimised for ${gs('am_au','US + UAE + Middle East')}
+- Each title labeled: (REAL) / (SEMI-REAL) / (FICTIONAL)
+- Feel evidentiary, classified, archival — like a document that shouldn't exist
+${title ? `- Expand on or complement this selected title: "${title}"` : ''}
+
+FORMAT — follow exactly:
+TITLE 1: [title] — (classification)
+TITLE 2: [title] — (classification)
+TITLE 3: [title] — (classification)
+TITLE 4: [title] — (classification)
+TITLE 5: [title] — (classification)
+
+RECOMMENDED: [which title and exactly why — one sentence with specific reasoning]
+THUMBNAIL POWER WORD: [1-3 word overlay text for Canva Pro]`, 2000);
+
+      setTaskBody('titles', text);
+      setTaskMeta('titles', '5 titles generated');
+      doneTask('titles');
+      setStep('titles', 'done');
+      collected.titles = text;
+      chosenTitle = text.split('\n').find(l => l.startsWith('TITLE 1:'))?.replace('TITLE 1:', '').replace(/\(.*\)/, '').trim() || title;
+    }
+
+    // ── PHASE 2: SCRIPT ──────────────────────────────
+    if (ton('tg-script')) {
+      setLoad(true, '⬛ PHASE 02 — WRITING FULL HORROR SCRIPT — 60-90 SECONDS — DO NOT CLOSE...');
+      setStep('script', 'active');
+      showTask('script');
+
+      const scriptPrompt = `Write a COMPLETE, FULL-LENGTH horror narration script for ${gs('am_ch','Archivist Midnight')}.
+
+Parameters: ${ctx}
+Title: ${chosenTitle || 'Choose the strongest title for this wing'}
+
+CRITICAL: Do NOT summarise, do NOT shorten, do NOT skip sections. Every section must be written to its FULL length. This script goes directly into ElevenLabs without editing.
+
+FORMAT — follow exactly:
+
+[INTRO AUDIO CUE — low drone 5 seconds]
+"Accessing Level: Midnight Clearance. File opening. ${gs('am_mo','OMNIA VERITAS IN TENEBRIS')}."
+
+--- STORY #1 ---
+CLASSIFICATION: [REAL / SEMI-REAL / FICTIONAL]
+SOURCE: [full source explanation — specific sources, Reddit posts, folklore archives, news records, etc.]
+
+[HOOK]
+[3-5 sentences minimum. State one specific, wrong, impossible detail as fact. No explanation. The viewer is frozen.]
+
+[BUILDUP — WRITE IN FULL, MINIMUM 2,000 CHARACTERS]
+[Rich sensory detail. Full history. World building. Atmospheric dread. Multiple paragraphs. The witness does not yet understand. Include: specific location names, weather, time of day, smells, textures, sounds. Build the world completely.]
+
+[EVENT CORE — WRITE IN FULL, MINIMUM 1,500 CHARACTERS]
+[The confrontation. Pure witness testimony — what they saw, heard, felt. The worst moment is what they will NOT fully describe. Include ElevenLabs pacing markers: [SLOW DOWN] [PAUSE — 3 SEC] [LOWER VOICE] [SILENCE] [SPEED UP] throughout.]
+
+[RESOLUTION — WRITE IN FULL, MINIMUM 800 CHARACTERS]
+[The aftermath. Personal cost. What changed in their life. What remains permanently unexplained. Open unresolved loop. Final haunting detail.]
+
+[OUTRO]
+"File closed. This case remains open. New files drop every week. ${gs('am_mo','OMNIA VERITAS IN TENEBRIS')}. I am the ${gs('am_ch','Archivist Midnight')}."
+
+TOTAL TARGET: Minimum 8,000 characters for standard, 12,000 for extended, 15,000+ for maximum.
+If you reach your response limit before completing the script, end with exactly: [--- END OF PART 1 --- Type GET NEXT PART to continue]`;
+
+      const { text: scriptText, stopReason } = await claude(B, scriptPrompt, 4000);
+
+      lastScriptOutput = scriptText;
+      setTaskBody('script', scriptText);
+
+      const wordCount = scriptText.split(/\s+/).length;
+      const charCount = scriptText.length;
+      setTaskMeta('script', `${wordCount.toLocaleString()} words · ${charCount.toLocaleString()} chars`);
+
+      const isIncomplete = scriptText.includes('END OF PART') || stopReason === 'max_tokens';
+      if (isIncomplete) {
+        document.getElementById('scriptStatus2').textContent = '⚠ Script continues — tap GET NEXT PART';
+        document.getElementById('contBtn').classList.add('show');
+      } else {
+        document.getElementById('scriptStatus2').textContent = '✓ Script complete';
+      }
+
+      doneTask('script');
+      setStep('script', 'done');
+      collected.script = scriptText;
+    }
+
+    // ── PHASE 3: IMAGES ──────────────────────────────
+    if (ton('tg-images')) {
+      setLoad(true, '⬛ PHASE 03 — GENERATING 20 IDEOGRAM IMAGE PROMPTS...');
+      setStep('images', 'active');
+      showTask('images');
+
+      const wingVisuals = {
+        1:'police tape, redacted case files, dim interrogation room lighting, evidence bags, courthouse corridors, morgue cold light, newspaper clippings pinned to boards',
+        2:'cold dark Victorian mansions, rural American settings, old polaroid evidence photos, misty lakes at dawn, abandoned farmhouses, spectral fog',
+        3:'VHS tracking distortion, CRT screen glow, 80s-90s technology, degraded footage aesthetic, static interference, analog monitors in dark rooms',
+        4:'dense forest at night, missing person flyers stapled to trees, staircase in the middle of a clearing, thick fog between ancient trees, search and rescue headlamps',
+        5:'hospital corridors at 3am, flickering fluorescent ceiling lights, empty warehouse loading bays, 24-hour diner with no customers, security monitor screens',
+        6:'UAE desert at midnight, abandoned mosques with sand drifting through doorways, gold jewellery half-buried in sand, traditional Arabic architecture decaying, empty desert highways with one set of footprints, flickering lanterns',
+        7:'antique objects in dim light, Victorian furniture covered in dust, estate sale rooms, candles burning in empty rooms, gothic archways, ornate boxes',
+        8:'clinical white hospital rooms, mirrors showing wrong reflections, psychiatric ward corridors, isolation rooms with scratched walls',
+        9:'empty fluorescent-lit malls, endless identical hallways, abandoned school classrooms with chairs still set, backrooms yellow wallpaper',
+        10:'classified document stamps, underground government bunkers, black SUVs at night, redacted reports, military facility control rooms',
+        11:'ambient rain on dark windows, fireplace glow in empty rooms, atmospheric night landscapes, long-exposure desert and forest photography',
+        12:'ritual candle circles on stone floors, ancient manuscripts, moonlit clearings, abandoned churches with symbols carved into wood',
+        13:'server rooms with cascading code on screens, digital glitch overlays, AI interface terminals in darkness, digital void aesthetics'
+      };
+
+      const { text } = await claude(B, `Generate exactly 20 cinematic horror image prompts for a ${gs('am_ch','Archivist Midnight')} video.
+
+Parameters: ${ctx}
+Title: ${chosenTitle}
+
+MANDATORY STYLE PREFIX — copy this EXACTLY at the start of every single prompt, word for word:
+"Ultra-realistic 8K cinematic horror artwork, hyper-detailed textures, dramatic low-key lighting, volumetric fog, photo-real skin, dark moody color grading, wet reflective surfaces, film grain, brutal psychological fear, deep shadows, wide depth cinematic composition, Archivist Midnight forbidden archive aesthetic ---"
+
+Wing-specific visual elements for Wing ${w} (${wingName}): ${wingVisuals[w] || 'atmospheric horror environments, dread, isolation'}
+
+RULES:
+- All 20 prompts must be generated — do not stop at 10
+- Each prompt must be unique: different camera angle, different scene moment, different character position or absence, different emotion, different composition
+- Style prefix must appear at the start of EVERY prompt without modification
+- Match prompts to specific moments in the story if a title is selected
+
+NUMBER FORMAT — follow exactly:
+PROMPT 1: [mandatory prefix] --- [unique scene description]
+PROMPT 2: [mandatory prefix] --- [unique scene description]
+[continue through PROMPT 20]`, 3500);
+
+      setTaskBody('images', text, true);
+      const promptCount = (text.match(/^PROMPT \d+:/mg) || []).length;
+      setTaskMeta('images', `${promptCount} of 20 prompts generated`);
+      doneTask('images');
+      setStep('images', 'done');
+      collected.images = text;
+    }
+
+    // ── PHASE 4: THUMBNAILS ───────────────────────────
+    if (ton('tg-thumbs')) {
+      setLoad(true, '⬛ PHASE 04 — GENERATING 3 THUMBNAIL CONCEPTS...');
+      setStep('thumbs', 'active');
+      showTask('thumbs');
+
+      const { text } = await claude(B, `Generate exactly 3 complete cinematic horror thumbnail concepts for ${gs('am_ch','Archivist Midnight')}.
+
+Parameters: ${ctx}
+Title: ${chosenTitle} | Power word: ${pw || 'choose strongest horror power word for this wing'}
+
+THUMBNAIL RULES (Jon Youshaei method — mandatory):
+- Max 3 visual elements — strict, no exceptions
+- Must pass the 18% mobile scale rule — readable when tiny on a phone
+- Mystery category: imply the unseen threat, never show it directly
+- Colour palette: Deep Red + Desaturated Green OR Harsh White on Pure Black
+- NO blood, NO gore, NO graphic wounds — YouTube policy compliant
+- "Moment before death" tension — one second before the worst thing happens
+- Horror audiences click what they cannot explain
+
+For each thumbnail, provide ALL 8 points:
+1. Exact camera angle and framing
+2. Main subject + environment description (max 2 visual elements)
+3. Lighting colour and emotional atmosphere
+4. What the viewer's eye lands on first and why
+5. Shadow direction and depth description
+6. Kittl font recommendation: SPELTALE / MOKOTO / NO SIGNAL / DUSK DEMON
+7. Power word overlay for Canva Pro (1-3 words maximum)
+8. Complete Ideogram generation prompt for this thumbnail image
+
+FORMAT:
+THUMBNAIL A — [concept name]
+[all 8 points]
+
+THUMBNAIL B — [concept name]
+[all 8 points]
+
+THUMBNAIL C — [concept name]
+[all 8 points]
+
+TEST ORDER: State Variation 1, 2, 3 order for YouTube Thumbnail Test and why.
+PREDICTED WINNER: [which concept and why — one sentence]`, 2500);
+
+      setTaskBody('thumbs', text, true);
+      doneTask('thumbs');
+      setStep('thumbs', 'done');
+      collected.thumbs = text;
+    }
+
+    // ── PHASE 5: SEO ──────────────────────────────────
+    if (ton('tg-seo')) {
+      setLoad(true, '⬛ PHASE 05 — BUILDING SEO PACKAGE...');
+      setStep('seo', 'active');
+      showTask('seo');
+
+      const { text } = await claude(B, `Generate a complete YouTube Studio upload package for ${gs('am_ch','Archivist Midnight')}.
+
+Parameters: ${ctx}
+Title: ${chosenTitle}
+
+Produce everything below ready to paste directly into YouTube Studio:
+
+━━━ FINAL SEO TITLE ━━━
+[Long-format, single-story, curiosity-driven, minimum 12 words, label classification]
+
+━━━ DESCRIPTION ━━━
+LINE 1 [hook — max 100 chars, visible in search before Show More]:
+LINE 2 [AI disclosure]: "This video contains AI-generated narration and visuals. All stories are presented for entertainment purposes."
+[blank line]
+[3-4 sentences: what this file covers, OMNIA VERITAS IN TENEBRIS branding, subscribe CTA]
+[blank line]
+Archivist correspondence: ${gs('am_em','midnighthorrorfileshq@gmail.com')}
+[blank line]
+#HorrorNarration #TrueScaryStories #ArchivistMidnight
+
+━━━ 20 TAGS ━━━
+[Mix: ultra-niche horror + broad audience + channel brand + trending 2025-2026 horror search terms]
+[Comma-separated, paste-ready]
+
+━━━ PINNED COMMENT ━━━
+[Engagement question specific to this video]
+
+━━━ CHAPTER TIMESTAMPS ━━━
+00:00 - Accessing the Archive
+[story chapters]
+XX:XX - File Closed
+
+━━━ PLAYLIST ━━━
+[Which wing playlist to add this to]
+
+━━━ COMPLIANCE CHECK ━━━
+AI label: ✓ | Made for Kids OFF: ✓ | No gore thumbnail: ✓ | True crime names compliant: ✓ | EVENT CORE witness-only: ✓ | AI disclosure in description: ✓`, 2500);
+
+      setTaskBody('seo', text, true);
+      doneTask('seo');
+      setStep('seo', 'done');
+      collected.seo = text;
+    }
+
+    // ── PHASE 6: CAPCUT ───────────────────────────────
+    if (ton('tg-capcut')) {
+      setLoad(true, '⬛ PHASE 06 — GENERATING CAPCUT EDIT GUIDE...');
+      setStep('capcut', 'active');
+      showTask('capcut');
+
+      const { text } = await claude(B, `Generate a specific CapCut desktop edit guide for this exact video.
+
+Parameters: ${ctx}
+Title: ${chosenTitle}
+
+The editor has: ElevenLabs narration audio (from Google Drive), Ideogram horror renders (20 images), Epidemic Sound SFX stems, optional Envato Elements B-roll clips.
+
+PHASE A — PROJECT SETUP (15 min)
+CapCut settings: resolution, fps, import order, project naming convention
+
+PHASE B — TIMELINE ASSEMBLY (60-90 min)
+Story-by-story visual sync. Which image type for each section (HOOK vs BUILDUP vs EVENT CORE vs RESOLUTION). Image timing. Audio mixing dB levels for ${tone} tone.
+
+PHASE C — HORROR EFFECTS (45 min)
+Specific effects for Wing ${w} — ${wingName}: exact CapCut preset names, opacity %, colour grade direction. VHS overlay settings. Glitch transition timing. Wing-specific atmospheric effect.
+
+PHASE D — TEXT & BRANDING (30 min)
+Story title card format. Channel watermark position. Auto-caption style. 5-sec branded intro. 15-sec outro with next file teaser.
+
+PHASE E — EXPORT (15 min)
+Codec H.264, bitrate High, file naming: AM_W${w}_[story-abbreviation]_[date]
+
+ESTIMATED TOTAL TIME: [X hours]
+DIFFICULTY: [Easy/Medium/Complex] — [one sentence reason]`, 2000);
+
+      setTaskBody('capcut', text, true);
+      doneTask('capcut');
+      setStep('capcut', 'done');
+      collected.capcut = text;
+    }
+
+    // ── PHASE 7: PACKAGE ANALYSIS ─────────────────────
+    setLoad(true, '⬛ PHASE 07 — RUNNING PACKAGE ANALYSIS...');
+    document.getElementById('analysisBlock').classList.add('show');
+    document.getElementById('analysisBlock').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    const analysisInput = `
+TITLE OUTPUT:
+${collected.titles || 'Not generated'}
+
+SCRIPT OUTPUT (first 3000 chars):
+${(collected.script || 'Not generated').substring(0, 3000)}
+
+THUMBNAIL OUTPUT:
+${collected.thumbs || 'Not generated'}
+
+SEO OUTPUT (first 1000 chars):
+${(collected.seo || 'Not generated').substring(0, 1000)}
+`;
+
+    const { text: analysisText } = await claude(B, `You are the Quality Controller for Archivist Midnight YouTube channel. Analyse the complete video package generated below and produce a detailed production report.
+
+Generated package:
+${analysisInput}
+
+Wing: ${w} — ${wingName}
+Title selected: ${chosenTitle || 'AI chosen'}
+Tone: ${tone}
+
+Produce this EXACT report format:
+
+━━━ OVERALL PACKAGE SCORE ━━━
+[X/10] — [one sentence verdict on whether this package is production ready]
+
+━━━ PHASE-BY-PHASE RATINGS ━━━
+
+TITLES [X/10]
+Best title: [paste the single strongest title from the output]
+Why it works: [one sentence specific reason — CTR, emotional hook, SEO value]
+Weakness: [one specific thing to improve]
+
+SCRIPT [X/10]
+Strongest moment: [paste 1-2 sentences that are the most powerful in the script]
+Hook quality: [rate the hook specifically — does it freeze the viewer?]
+Structure check: HOOK ✓/✗ | BUILDUP ✓/✗ | EVENT CORE ✓/✗ | RESOLUTION ✓/✗ | OUTRO ✓/✗
+Completeness: [Complete / Needs continuation / Truncated]
+ElevenLabs readiness: [Ready / Needs Quillbot pass / Needs edit]
+Key fix needed: [one specific improvement]
+
+THUMBNAILS [X/10]
+Predicted CTR winner: [A, B or C and why in one sentence]
+Mobile scale check: [Pass / Concern — specific reason]
+Policy compliance: [Clear / Flag — specific reason]
+Font recommendation confirmed: [which font and why]
+
+SEO PACKAGE [X/10]
+Title word count: [count]
+Tag diversity: [Good / Needs more niche / Needs more broad]
+Description hook quality: [rating and one sentence why]
+Key improvement: [one specific fix]
+
+━━━ ELEVENLABS READINESS CHECK ━━━
+Voice recommended: [Adam / Josh / Arnold + settings reminder]
+Pacing markers present: [Yes — count / Partially / Missing]
+Sections to Quillbot first: [list which sections need compliance pass]
+Estimated narration length: [X-Y minutes based on word count]
+AI Studio split points: [Part 1 ends at / Part 2 ends at / Part 3 ends at]
+
+━━━ PRODUCTION VERDICT ━━━
+Ready to record: [YES — go to ElevenLabs now / NEARLY — fix X first / NO — regenerate Y]
+Upload schedule slot: [Monday Case Report / Wednesday Deep Dive / Friday Sleep Compendium]
+Predicted CTR: [Low / Medium / High / Very High] — [one sentence reason]
+Predicted retention: [Low / Medium / High] — [one sentence reason based on script quality]
+Revenue potential: [Low / Medium / High] — [one sentence RPM reasoning for US audience]
+
+━━━ TOP 3 ACTIONS BEFORE RECORDING ━━━
+1. [most important fix]
+2. [second fix]
+3. [third fix or "None — package is production ready"]`, 3000);
+
+    document.getElementById('analysis-body-content').textContent = analysisText;
+    const tsa = document.getElementById('ts-analysis');
+    tsa.className = 'task-status done';
+    tsa.innerHTML = '✓ Analysis complete';
+    collected.analysis = analysisText;
+
+    // META STRIP
+    const now = new Date();
+    const ms = document.getElementById('metaStrip');
+    ms.classList.add('show');
+    ms.innerHTML = `
+      <div><div class="mk">Generated</div><div class="mv">${now.toLocaleTimeString()}</div></div>
+      <div><div class="mk">Wing</div><div class="mv">${w} · ${wingName}</div></div>
+      <div><div class="mk">Story</div><div class="mv">${title ? title.substring(0,28)+'...' : 'AI chosen'}</div></div>
+      <div><div class="mk">Power Word</div><div class="mv" style="color:var(--gold);">${pw || '—'}</div></div>
+      <div><div class="mk">Phases</div><div class="mv" style="color:var(--green);">7/7 ✓</div></div>
+      <div><div class="mk">Status</div><div class="mv" style="color:var(--green);">PACKAGE READY</div></div>`;
+
+    setLoad(false);
+    document.getElementById('stsTxt').textContent = 'PACKAGE READY';
+
+  } catch (err) {
+    setLoad(false);
+    showErr(err.message + ' — Check your API key and internet connection, then try again.');
+    console.error(err);
+  }
+}
+
+// ═══ BRAND SYSTEM PROMPT ══════════════════════════════
+function brand() {
+  return `You are the AI content engine for ${gs('am_ch','Archivist Midnight')} — a YouTube horror narration channel (@ArchivistMidnight).
+
+CHANNEL IDENTITY:
+- Brand: ${gs('am_ch','Archivist Midnight')} | Handle: @ArchivistMidnight
+- Motto: ${gs('am_mo','OMNIA VERITAS IN TENEBRIS')} (All Truth is in Darkness)
+- Email: ${gs('am_em','midnighthorrorfileshq@gmail.com')}
+- Audience: ${gs('am_au','US + UAE + Middle East')}
+- Style: Institutional archival documentary authority. Calm, measured, devoid of sensationalism. The narrator is a curator of forbidden knowledge — think Mr. Nightmare meets a forensic archivist. Based in Dubai, UAE.
+- Visual identity: Forbidden Archive — redacted files, case folders, VHS artifacts, archival evidence, classified stamps, OMNIA VERITAS IN TENEBRIS.
+
+MR. SKELETON SCRIPT METHOD — MANDATORY FOR EVERY STORY:
+Each story must follow this EXACT structure with FULL length — do not summarise or shorten:
+
+HOOK (3-5 sentences MINIMUM):
+Freeze viewer attention immediately. One specific, impossibly wrong detail stated matter-of-factly. No context. No explanation. The reader cannot look away.
+
+BUILDUP (MULTIPLE FULL PARAGRAPHS — minimum 2,000 characters):
+Slow psychological descent. Rich sensory detail — textures, smells, sounds, light quality. Full history of the location or entity. World building that makes the threat feel real. The witness does not yet understand what they are dealing with. Dread accumulates.
+
+EVENT CORE (FULL CONFRONTATION — minimum 1,500 characters):
+The terror moment. Written ENTIRELY as witness testimony — what they saw, heard, felt, smelled. NEVER instructional. The worst moment is what the witness CANNOT bring themselves to fully describe. Leave that gap.
+
+RESOLUTION (FULL AFTERMATH — minimum 800 characters):
+The personal cost to the witness. What changed in their life. What remains permanently unexplained. An open loop the viewer will think about at 3am. Never fully resolve.
+
+TONE RULES:
+- Never sensationalise. Understatement beats hyperbole.
+- Specific details (exact dates, road names, times, weather) ground horror in reality.
+- The scariest moment is what the witness WILL NOT describe.
+- Diegetic silence beats jump scares.
+- First-person witness framing equals perceived authenticity.
+- Include [SLOW DOWN], [PAUSE - 3 SEC], [LOWER VOICE], [SILENCE], [SPEED UP] pacing markers for ElevenLabs.
+
+YOUTUBE POLICY - MANDATORY:
+- AI disclosure in every description.
+- True crime: first name or initials only.
+- EVENT CORE = witness testimony only, never instructional.
+- No gratuitous gore. Atmospheric horror only.
+- Label every story: (REAL) / (SEMI-REAL) / (FICTIONAL) with source.`;
+}
+
+// ═══ CONTINUE SCRIPT ══════════════════════════════════
+async function continueScript() {
+  if (!lastScriptOutput) return;
+  const B = brand();
+
+  document.getElementById('contBtn').classList.remove('show');
+  setLoad(true, 'CONTINUING SCRIPT - WRITING NEXT PART...');
+
+  try {
+    const { text, stopReason } = await claude(B,
+      `Continue the horror narration script for ${gs('am_ch','Archivist Midnight')} from exactly where it left off.
+
+Previous output ended with:
+"${lastScriptOutput.slice(-500)}"
+
+Continue from the exact last sentence. Same tone, same story, same structure. Do not repeat anything already written. Complete EVENT CORE and RESOLUTION if not done, then write the OUTRO.
+
+If you cannot complete in this response, end with: [--- END OF PART 2 --- Type GET NEXT PART to continue]`,
+      4000);
+
+    const scriptEl = document.getElementById('tb-script');
+    const fullScript = (scriptEl.textContent || '') + '\n\n[--- CONTINUATION ---]\n\n' + text;
+    scriptEl.textContent = fullScript;
+    lastScriptOutput = text;
+
+    const wordCount = fullScript.split(/\s+/).length;
+    setTaskMeta('script', wordCount.toLocaleString() + ' words total');
+
+    const isStillIncomplete = text.includes('END OF PART') || stopReason === 'max_tokens';
+    if (isStillIncomplete) {
+      document.getElementById('scriptStatus2').textContent = 'More available - tap GET NEXT PART';
+      document.getElementById('contBtn').classList.add('show');
+    } else {
+      document.getElementById('scriptStatus2').textContent = 'Script fully complete';
+      doneTask('script');
+    }
+
+    setLoad(false);
+    document.getElementById('stsTxt').textContent = 'SCRIPT COMPLETE';
+  } catch (err) {
+    setLoad(false);
+    showErr('Continuation failed: ' + err.message);
+  }
+}
+
+// ═══ CHECKLIST ════════════════════════════════════════
+const chkItems = [
+  {t:'AI content label enabled in YouTube Studio',c:'cat-p',cat:'Policy'},
+  {t:'AI disclosure text in first 2 lines of description',c:'cat-p',cat:'Policy'},
+  {t:'Made for Kids → OFF',c:'cat-p',cat:'Policy'},
+  {t:'Quillbot compliance pass done on EVENT CORE sections',c:'cat-p',cat:'Policy'},
+  {t:'CapCut export has no gore or graphic wound visuals',c:'cat-p',cat:'Policy'},
+  {t:'Thumbnail passes 18% mobile readability rule',c:'cat-t',cat:'Thumbnail'},
+  {t:'Thumbnail max 3 elements — no blood or gore',c:'cat-t',cat:'Thumbnail'},
+  {t:'3 A/B/C thumbnail variations uploaded to YouTube Test',c:'cat-t',cat:'Thumbnail'},
+  {t:'Epidemic Sound only — no uncleared music in CapCut',c:'cat-l',cat:'Legal'},
+  {t:'True crime: victims by first name or initials only',c:'cat-l',cat:'Legal'},
+  {t:'Script labelled Real/Semi-Real/Fictional with sources',c:'cat-l',cat:'Legal'},
+  {t:'Title SEO-optimised with emotional curiosity language',c:'cat-s',cat:'SEO'},
+  {t:'First 2 description lines are hook visible in search',c:'cat-s',cat:'SEO'},
+  {t:'20 tags added — niche + broad horror keywords',c:'cat-s',cat:'SEO'},
+  {t:'End screen, cards, pinned comment question ready',c:'cat-e',cat:'Engagement'},
+];
+let chkState = new Array(15).fill(false);
+function renderChk() {
+  document.getElementById('chkList').innerHTML = chkItems.map((item,i) => `
+    <div class="ci">
+      <div class="cb2${chkState[i]?' done':''}" onclick="toggleChk(${i})">${chkState[i]?'✓':''}</div>
+      <span style="flex:1;text-decoration:${chkState[i]?'line-through':'none'};color:${chkState[i]?'var(--ash-dim)':'var(--ash)'};">${item.t}</span>
+      <span class="ccat ${item.c}">${item.cat}</span>
+    </div>`).join('');
+  const d = chkState.filter(Boolean).length;
+  document.getElementById('cpf').style.width = Math.round(d/15*100)+'%';
+  document.getElementById('cpl').textContent = d+'/15'+(d===15?' — READY TO UPLOAD ✓':'');
+}
+function toggleChk(i) { chkState[i]=!chkState[i]; renderChk(); }
+function resetChk() { chkState.fill(false); renderChk(); }
+
+// ═══ INIT ═════════════════════════════════════════════
+window.addEventListener('load', () => {
+  const k = localStorage.getItem('am_key');
+  if (k) { document.getElementById('apiKey').value=k; document.getElementById('apiKey2').value=k; document.getElementById('keySaved').classList.add('show'); }
+  ['ch','mo','em','au'].forEach(f => {
+    const el = document.getElementById('s-'+f);
+    const sv = localStorage.getItem('am_'+f);
+    if (el && sv) el.value = sv;
+  });
+  loadWingStories();
+  buildFilesPage();
+  renderChk();
+});
+</script>
+</body>
+</html>
